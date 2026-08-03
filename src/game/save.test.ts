@@ -1,0 +1,56 @@
+import { ALL_REGIONS, START_REGION } from '../map/regions'
+import { SAVE_VERSION, deserialize, serialize } from './save'
+import { TRUTH_ATTEMPT, initialState, isComplete } from './state'
+import type { GameState } from './state'
+
+describe('serialize/deserialize', () => {
+  test('進行中の状態が、シリアライズして復元したとき、regionsが完全に一致するべき', () => {
+    const state: GameState = {
+      regions: {
+        [START_REGION]: { attempts: 0, confirmedAttempt: TRUTH_ATTEMPT },
+        'r6-1': { attempts: 3, confirmedAttempt: 2 },
+        'r4-1': { attempts: 1, confirmedAttempt: null },
+      },
+      phase: { type: 'idle' },
+    }
+    const restored = deserialize(serialize(state))
+    expect(restored.regions).toEqual(state.regions)
+    expect(restored.phase).toEqual({ type: 'idle' })
+  })
+
+  test('報告確認の途中でセーブされた状態が、復元したとき、idleに戻るべき', () => {
+    const state: GameState = {
+      regions: { [START_REGION]: { attempts: 0, confirmedAttempt: TRUTH_ATTEMPT } },
+      phase: { type: 'reviewing', target: 'r6-1', attempt: 0 },
+    }
+    expect(deserialize(serialize(state)).phase).toEqual({ type: 'idle' })
+  })
+
+  test('全海域確定済みの状態が、復元したとき、phaseがcompleteになるべき', () => {
+    const state: GameState = {
+      regions: Object.fromEntries(
+        ALL_REGIONS.map((id) => [id, { attempts: 1, confirmedAttempt: 0 }]),
+      ),
+      phase: { type: 'idle' },
+    }
+    const restored = deserialize(serialize(state))
+    expect(isComplete(restored)).toBe(true)
+    expect(restored.phase).toEqual({ type: 'complete' })
+  })
+
+  test('不正なJSONを読み込んだとき、初期状態を返すべき', () => {
+    expect(deserialize('{"broken')).toEqual(initialState())
+    expect(deserialize('null')).toEqual(initialState())
+    expect(deserialize(null)).toEqual(initialState())
+  })
+
+  test('バージョンが異なるセーブを読み込んだとき、初期状態を返すべき', () => {
+    const old = JSON.stringify({ version: SAVE_VERSION + 1, regions: {} })
+    expect(deserialize(old)).toEqual(initialState())
+  })
+
+  test('存在しない海域IDを含むセーブを読み込んだとき、初期状態を返すべき', () => {
+    const bad = JSON.stringify({ version: SAVE_VERSION, regions: { 'r99-99': [1, 0] } })
+    expect(deserialize(bad)).toEqual(initialState())
+  })
+})
