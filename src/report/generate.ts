@@ -53,7 +53,7 @@ export function generateReport(
   const ops = chooseLieOps(rng, truth.length > 0, preset)
   let geometry = truth
   for (const op of ops) {
-    if (op === 'vanish') geometry = vanishRings(geometry, bbox, rng, preset)
+    if (op === 'vanish') geometry = vanishRings(geometry, bbox, rng, preset, seed)
     else if (op === 'distort') geometry = distortRings(geometry, bbox, rng, seed, preset)
     else geometry = fabricateIslands(geometry, bbox, rng, preset)
   }

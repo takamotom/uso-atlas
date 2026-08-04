@@ -1,8 +1,9 @@
-import { distToRectBorder, distToRingOutline } from '../map/geo'
+import { distToRectBorder, distToRingOutline, pointInRing, ringArea } from '../map/geo'
 import type { BBox, Ring } from '../map/geo'
 import { INTENSITY_PRESETS } from './config'
 import { createRng } from './random'
 import {
+  anchorCandidates,
   distortRings,
   fabricateIslands,
   fabricateMegaContinent,
@@ -141,14 +142,18 @@ describe('fabricateMegaContinent', () => {
     }
   })
 
-  test('大陸盤が、生成されたとき、セル幅の7割以上を覆う巨大な陸地であるべき', () => {
+  test('大陸盤が、生成されたとき、セル面積の15%を超える大陸級の陸地であるべき', () => {
     for (let trial = 0; trial < 10; trial++) {
       const ring = fabricateMegaContinent(bbox, 1.05, createRng(`mega-size-${trial}`))
-      const xs = ring.map(([x]) => x)
-      const ys = ring.map(([, y]) => y)
-      expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(30 * 0.7)
-      expect(Math.max(...ys) - Math.min(...ys)).toBeGreaterThan(30 * 0.7)
+      expect(Math.abs(ringArea(ring))).toBeGreaterThan(30 * 30 * 0.15)
     }
+  })
+
+  test('大陸盤の輪郭が、生成されたとき、矩形的でなく方向によって半径が大きく変化するべき', () => {
+    const ring = fabricateMegaContinent(bbox, 1.05, createRng('mega-organic'))
+    const dists = ring.map(([x, y]) => Math.hypot(x - 15, y - 15))
+    const spread = Math.max(...dists) / Math.min(...dists)
+    expect(spread).toBeGreaterThan(1.2)
   })
 
   test('夢見る船長（wild）の捏造が、多数回試行したとき、大陸盤を生成する場合があるべき', () => {
@@ -156,12 +161,44 @@ describe('fabricateMegaContinent', () => {
     let sawMega = false
     for (let trial = 0; trial < 40; trial++) {
       const out = fabricateIslands([], bbox, createRng(`mega-roll-${trial}`), wild)
-      for (const ring of out) {
-        const xs = ring.map(([x]) => x)
-        if (Math.max(...xs) - Math.min(...xs) > 30 * 0.7) sawMega = true
-      }
+      // 大陸盤は72頂点、通常のブロブ島は40頂点で生成される
+      if (out.some((ring) => ring.length === 72)) sawMega = true
     }
     expect(sawMega).toBe(true)
+  })
+})
+
+describe('接続パターン（大陸の延長）', () => {
+  const alwaysExtend = { ...preset, extensionProbability: 1 }
+
+  test('接続候補が、境界に近すぎる頂点を含まないべき', () => {
+    const candidates = anchorCandidates([borderLand, interiorIsland], bbox, 5)
+    expect(candidates.length).toBeGreaterThan(0)
+    for (const p of candidates) {
+      expect(distToRectBorder(p, bbox)).toBeGreaterThanOrEqual(5)
+    }
+  })
+
+  test('接続確率100%の捏造が、既存の陸地があるとき、追加された島がその海岸線上の点を含むべき', () => {
+    for (let trial = 0; trial < 10; trial++) {
+      const out = fabricateIslands([interiorIsland], bbox, createRng(`ext-${trial}`), alwaysExtend)
+      const added = out.slice(1)
+      expect(added.length).toBeGreaterThan(0)
+      for (const island of added) {
+        const touchesAnchor = interiorIsland.some((v) => pointInRing(v, island))
+        expect(touchesAnchor).toBe(true)
+      }
+    }
+  })
+
+  test('接続確率100%でも、既存の陸地がないとき、通常の島配置にフォールバックするべき', () => {
+    const out = fabricateIslands([], bbox, createRng('ext-empty'), alwaysExtend)
+    expect(out.length).toBeGreaterThan(0)
+    for (const ring of out) {
+      for (const p of ring) {
+        expect(distToRectBorder(p, bbox)).toBeGreaterThanOrEqual(margin - 1e-9)
+      }
+    }
   })
 })
 
@@ -203,14 +240,14 @@ describe('sinkRingToBorderStrips', () => {
 describe('vanishRings', () => {
   test('境界に接するリングが、消失変換を適用したとき、境界帯の地形が保たれるべき', () => {
     for (let trial = 0; trial < 10; trial++) {
-      const out = vanishRings([borderLand, interiorIsland], bbox, createRng(`van-${trial}`), preset)
+      const out = vanishRings([borderLand, interiorIsland], bbox, createRng(`van-${trial}`), preset, 'seed-v')
       const stillTouching = out.filter((r) => touchesBorder(r, bbox, margin))
       expect(stillTouching.length).toBeGreaterThanOrEqual(1)
     }
   })
 
   test('境界に接するリングの境界帯頂点が、痩せ変換後も元の輪郭線上にあるべき', () => {
-    const out = vanishRings([borderLand], bbox, createRng('van-erode'), preset)
+    const out = vanishRings([borderLand], bbox, createRng('van-erode'), preset, 'seed-e')
     for (const ring of out) {
       for (const p of ring) {
         if (distToRectBorder(p, bbox) <= margin / 2) {
@@ -222,7 +259,7 @@ describe('vanishRings', () => {
 
   test('内陸の島が、多数回の消失変換で、削除される場合があるべき', () => {
     const deleted = Array.from({ length: 20 }, (_, i) =>
-      vanishRings([interiorIsland], bbox, createRng(`van-del-${i}`), preset),
+      vanishRings([interiorIsland], bbox, createRng(`van-del-${i}`), preset, 'seed-d'),
     ).filter((out) => out.length === 0)
     expect(deleted.length).toBeGreaterThan(0)
   })
@@ -232,7 +269,7 @@ describe('vanishRings', () => {
     const wildMargin = marginOf(bbox, wild)
     let sawSink = false
     for (let trial = 0; trial < 30; trial++) {
-      const out = vanishRings([borderLand], bbox, createRng(`wild-van-${trial}`), wild)
+      const out = vanishRings([borderLand], bbox, createRng(`wild-van-${trial}`), wild, `seed-w${trial}`)
       // 沈没 = すべての残存リングが境界帯内に収まっている
       const allInBand = out.every((ring) =>
         ring.every((p) => distToRectBorder(p, bbox) <= wildMargin + 1e-9),

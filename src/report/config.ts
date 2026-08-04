@@ -55,6 +55,11 @@ export interface LiePreset {
   continentClamp: number
   /** 大陸盤（海域をほぼ埋め尽くす超巨大大陸）が起きる確率。隣接海域と海峡1本で繋がって見える */
   megaContinentProbability: number
+  /**
+   * 捏造島が既存の陸地に接続して生える（大陸の延長になる）確率。
+   * 境界を跨ぐ陸地に接続すれば、隣の海域の陸地と繋がった大陸に見える
+   */
+  extensionProbability: number
   /** 消失変換で内陸リングが削除される確率 */
   vanishProbability: number
   /** 境界接続の大陸が「沈没」する（境界の残骸だけ残して消える）確率 */
@@ -79,6 +84,7 @@ export const INTENSITY_PRESETS: Record<LieIntensity, LiePreset> = {
     continentRadius: 0.18,
     continentClamp: 1.4,
     megaContinentProbability: 0,
+    extensionProbability: 0.1,
     vanishProbability: 0.5,
     totalVanishProbability: 0,
     erodeStrength: { min: 0.2, max: 0.4 },
@@ -97,6 +103,7 @@ export const INTENSITY_PRESETS: Record<LieIntensity, LiePreset> = {
     continentRadius: 0.24,
     continentClamp: 1.4,
     megaContinentProbability: 0,
+    extensionProbability: 0.25,
     vanishProbability: 0.8,
     totalVanishProbability: 0,
     erodeStrength: { min: 0.3, max: 0.6 },
@@ -116,6 +123,7 @@ export const INTENSITY_PRESETS: Record<LieIntensity, LiePreset> = {
     continentRadius: 0.3,
     continentClamp: 1.3,
     megaContinentProbability: 0.3,
+    extensionProbability: 0.35,
     vanishProbability: 0.9,
     totalVanishProbability: 0.5,
     erodeStrength: { min: 0.5, max: 0.9 },

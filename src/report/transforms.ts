@@ -9,7 +9,7 @@ import { clipRingToRect, distToRectBorder, ringArea, ringCentroid } from '../map
 import type { LiePreset } from './config'
 import { createNoise2D, smoothstep } from './noise'
 import type { Rng } from './random'
-import { rollInt, rollRange } from './random'
+import { pick, rollInt, rollRange } from './random'
 
 function cellWidth(bbox: BBox): number {
   return bbox.x1 - bbox.x0
@@ -117,18 +117,19 @@ function blobIsland(center: Point, radius: number, clamp: number, rng: Rng): Rin
 }
 
 /**
- * 大陸盤: 海域の内側（境界帯を除く）をほぼ埋め尽くす超巨大大陸。
- * セル中心からの放射で内接矩形（境界からmarginだけ内側）の縁までの距離を上限に、
- * ノイズで縁を波打たせた形にする。全頂点は必ず境界からmargin超に収まる。
+ * 大陸盤: 海域の大半を埋める超巨大大陸。
+ * 矩形ではなく内接楕円をベースにノイズで縁を大きく波打たせ、有機的な形にする
+ * （矩形基準だと角が立って「四角い大陸」になるため）。
+ * 楕円は境界からmarginだけ内側の矩形に内接するので、全頂点は必ず境界からmargin超に収まる。
  */
 export function fabricateMegaContinent(bbox: BBox, margin: number, rng: Rng): Ring {
-  const cx = (bbox.x0 + bbox.x1) / 2
-  const cy = (bbox.y0 + bbox.y1) / 2
-  const halfW = (bbox.x1 - bbox.x0) / 2 - margin * 1.05
-  const halfH = (bbox.y1 - bbox.y0) / 2 - margin * 1.05
-  const harmonics = [2, 3, 5, 8].map((k) => ({
+  const cx = (bbox.x0 + bbox.x1) / 2 + rollRange(rng, -margin, margin)
+  const cy = (bbox.y0 + bbox.y1) / 2 + rollRange(rng, -margin, margin)
+  const halfW = Math.min((bbox.x1 - bbox.x0) / 2, bbox.x1 - margin * 1.05 - cx, cx - bbox.x0 - margin * 1.05)
+  const halfH = Math.min((bbox.y1 - bbox.y0) / 2, bbox.y1 - margin * 1.05 - cy, cy - bbox.y0 - margin * 1.05)
+  const harmonics = [1, 2, 3, 5].map((k) => ({
     k,
-    amp: rollRange(rng, 0, 0.4 / Math.sqrt(k)),
+    amp: rollRange(rng, 0, 0.5 / Math.sqrt(k)),
     phase: rollRange(rng, 0, Math.PI * 2),
   }))
   const n = 72
@@ -137,19 +138,26 @@ export function fabricateMegaContinent(bbox: BBox, margin: number, rng: Rng): Ri
     const theta = (i / n) * Math.PI * 2
     const cos = Math.cos(theta)
     const sin = Math.sin(theta)
-    // 中心から内接矩形の縁までの距離（この方向の最大半径）
-    const rectR = Math.min(
-      cos !== 0 ? halfW / Math.abs(cos) : Infinity,
-      sin !== 0 ? halfH / Math.abs(sin) : Infinity,
-    )
+    // 中心からこの方向の内接楕円の縁までの距離
+    const ellipseR = (halfW * halfH) / Math.hypot(halfH * cos, halfW * sin)
     let noise = 0
     for (const h of harmonics) noise += h.amp * Math.sin(h.k * theta + h.phase)
-    // 縁の97%を上限に、ノイズぶんだけ内側へ波打たせる（湾や半島になる）
-    const inward = 0.03 + 0.27 * Math.min(1, Math.abs(noise))
-    const r = rectR * (1 - inward)
+    const factor = 0.68 + 0.3 * Math.max(-1, Math.min(1, noise))
+    const r = ellipseR * Math.min(0.98, factor)
     ring.push([cx + r * cos, cy + r * sin])
   }
   return ring
+}
+
+/** 既存の陸地の海岸線上で、ブロブの中心にできる（境界帯を侵さない）候補頂点 */
+export function anchorCandidates(rings: Ring[], bbox: BBox, clearance: number): Point[] {
+  const out: Point[] = []
+  for (const ring of rings) {
+    for (const p of ring) {
+      if (distToRectBorder(p, bbox) >= clearance) out.push(p)
+    }
+  }
+  return out
 }
 
 /** (b) 捏造: 存在しない島・ムー大陸級・大陸盤を追加。境界帯には配置しない */
@@ -173,9 +181,17 @@ export function fabricateIslands(
       ? preset.continentRadius * w
       : rollRange(rng, preset.islandRadius.min, preset.islandRadius.max) * w
     const clearance = margin + radius * clamp
-    const cx = rollRange(rng, bbox.x0 + clearance, bbox.x1 - clearance)
-    const cy = rollRange(rng, bbox.y0 + clearance, bbox.y1 - clearance)
-    added.push(blobIsland([cx, cy], radius, clamp, rng))
+    // 接続パターン: 既存の海岸線に接続して生やす（大陸の延長に見える。
+    // 境界を跨ぐ陸地に付けば隣の海域の陸地とも繋がる）。候補が無ければ通常配置
+    const anchors = rng() < preset.extensionProbability ? anchorCandidates(rings, bbox, clearance) : []
+    if (anchors.length > 0) {
+      const [ax, ay] = pick(rng, anchors)
+      added.push(blobIsland([ax, ay], radius, clamp, rng))
+    } else {
+      const cx = rollRange(rng, bbox.x0 + clearance, bbox.x1 - clearance)
+      const cy = rollRange(rng, bbox.y0 + clearance, bbox.y1 - clearance)
+      added.push(blobIsland([cx, cy], radius, clamp, rng))
+    }
   }
   return [...rings, ...added]
 }
@@ -206,7 +222,13 @@ export function sinkRingToBorderStrips(ring: Ring, bbox: BBox, margin: number): 
 }
 
 /** (c) 消失: 内陸の陸地を消し、境界接続の陸塊は痩せさせるか沈没させる */
-export function vanishRings(rings: Ring[], bbox: BBox, rng: Rng, preset: LiePreset): Ring[] {
+export function vanishRings(
+  rings: Ring[],
+  bbox: BBox,
+  rng: Rng,
+  preset: LiePreset,
+  seed: string,
+): Ring[] {
   const w = cellWidth(bbox)
   const margin = marginOf(bbox, preset)
   const interior = rings.filter((r) => !touchesBorder(r, bbox, margin))
@@ -218,7 +240,9 @@ export function vanishRings(rings: Ring[], bbox: BBox, rng: Rng, preset: LiePres
   const transformed: Ring[] = []
   for (const ring of bordering) {
     if (rng() < preset.totalVanishProbability) {
-      transformed.push(...sinkRingToBorderStrips(ring, bbox, margin))
+      // 残骸の内側の切り口は直線になるため、歪みをかけて岩礁らしい有機的な縁にする
+      const stubs = sinkRingToBorderStrips(ring, bbox, margin)
+      transformed.push(...distortRings(stubs, bbox, rng, `${seed}:sink`, preset))
       continue
     }
     const centroid = ringCentroid(ring)
