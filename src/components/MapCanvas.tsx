@@ -20,12 +20,20 @@ interface Props {
   preview: { region: RegionId; geometry: Ring[] } | null
   shipPos: Point | null
   truthOverlay: boolean
+  edgeFallsPreview: boolean
   onRegionClick: (id: RegionId) => void
 }
 
 const TAP_SLOP_PX = 8
 
-export function MapCanvas({ state, preview, shipPos, truthOverlay, onRegionClick }: Props) {
+export function MapCanvas({
+  state,
+  preview,
+  shipPos,
+  truthOverlay,
+  edgeFallsPreview,
+  onRegionClick,
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const baseRef = useRef<HTMLCanvasElement | null>(null)
@@ -73,8 +81,17 @@ export function MapCanvas({ state, preview, shipPos, truthOverlay, onRegionClick
 
     const ctx = canvas.getContext('2d')!
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    drawScene(ctx, { vt, base: baseRef.current, state, hover, preview, shipPos, truthOverlay })
-  }, [vt, state, hover, preview, shipPos, truthOverlay])
+    drawScene(ctx, {
+      vt,
+      base: baseRef.current,
+      state,
+      hover,
+      preview,
+      shipPos,
+      truthOverlay,
+      edgeFallsPreview,
+    })
+  }, [vt, state, hover, preview, shipPos, truthOverlay, edgeFallsPreview])
 
   // ホイールズーム（React経由だとpassiveでpreventDefaultできないため直接登録）
   useEffect(() => {

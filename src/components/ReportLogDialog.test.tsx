@@ -7,7 +7,7 @@ import type { GameState } from '../game/state'
 import { ReportLogDialog } from './ReportLogDialog'
 
 function makeState(regions: GameState['regions']): GameState {
-  return { regions, phase: { type: 'idle' }, intensity: 'standard', worldShape: 'globe' }
+  return { regions, phase: { type: 'idle' }, intensity: 'standard', worldShape: 'unknown', shapeAttempts: 0 }
 }
 
 describe('ReportLogDialog', () => {

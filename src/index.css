@@ -284,6 +284,21 @@ button:hover {
   padding-top: 12px;
 }
 
+.world-badge {
+  font-size: 0.85rem;
+  padding: 5px 10px;
+  border: 1px dashed #8a7448;
+  border-radius: 4px;
+  opacity: 0.9;
+  white-space: nowrap;
+  align-self: center;
+}
+
+.report-dialog-edge {
+  border-width: 3px;
+  border-style: double;
+}
+
 .notice-banner {
   position: fixed;
   top: 12px;

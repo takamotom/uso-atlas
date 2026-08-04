@@ -130,6 +130,8 @@ export interface SceneOptions {
   shipPos: Point | null
   /** 実際の世界地図を重ねる答え合わせ表示 */
   truthOverlay: boolean
+  /** 果ての報告（滝）のプレビュー表示 */
+  edgeFallsPreview: boolean
 }
 
 export function drawScene(ctx: CanvasRenderingContext2D, o: SceneOptions): void {
@@ -180,6 +182,12 @@ export function drawScene(ctx: CanvasRenderingContext2D, o: SceneOptions): void 
   }
 
   if (state.worldShape === 'flat') drawWorldEdgeFalls(ctx, vt)
+  if (o.edgeFallsPreview) {
+    ctx.save()
+    ctx.globalAlpha = 0.55
+    drawWorldEdgeFalls(ctx, vt)
+    ctx.restore()
+  }
 
   if (o.shipPos) {
     const [px, py] = vt.toPx(o.shipPos)

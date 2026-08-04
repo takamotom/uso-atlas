@@ -3,8 +3,10 @@ import { useGame } from '../hooks/use-game'
 import { useShipAnimation } from '../hooks/use-ship-animation'
 import { generateReport } from '../report/generate'
 import { exportMapPng } from '../render/export'
+import { edgeClaim } from '../report/world-edge'
 import { isMuted, playSfx, setMuted } from '../sound/sfx'
 import { CompleteScreen } from './CompleteScreen'
+import { EdgeReportDialog } from './EdgeReportDialog'
 import { GalleryView } from './GalleryView'
 import { Hud } from './Hud'
 import { ManualSection } from './ManualSection'
@@ -89,17 +91,6 @@ export default function App() {
             dispatch({ type: 'RESET', intensity })
           }
         }}
-        onWorldShapeChange={(worldShape) => {
-          if (worldShape === state.worldShape) return
-          const started = Object.keys(state.regions).length > 1
-          if (
-            !started ||
-            window.confirm('世界のかたちを変えると、いまの地図を消して新しい航海が始まります。よろしいですか？')
-          ) {
-            setTruthOverlay(false)
-            dispatch({ type: 'RESET', worldShape })
-          }
-        }}
       />
       {saveDiscarded && !noticeDismissed && (
         <div className="notice-banner" role="status">
@@ -114,11 +105,28 @@ export default function App() {
         preview={preview}
         shipPos={shipPos}
         truthOverlay={isComplete && truthOverlay}
+        edgeFallsPreview={
+          state.phase.type === 'edgeReviewing' && edgeClaim(state.phase.attempt) === 'falls'
+        }
         onRegionClick={(id) => {
           playSfx('sail')
           dispatch({ type: 'DISPATCH', target: id })
         }}
       />
+      {state.phase.type === 'edgeReviewing' && (
+        <EdgeReportDialog
+          claim={edgeClaim(state.phase.attempt)}
+          attempt={state.phase.attempt}
+          onBelieve={() => {
+            playSfx('stamp')
+            dispatch({ type: 'BELIEVE' })
+          }}
+          onReject={() => {
+            playSfx('reject')
+            dispatch({ type: 'REJECT' })
+          }}
+        />
+      )}
       {state.phase.type === 'reviewing' && (
         <ReportDialog
           regionId={state.phase.target}

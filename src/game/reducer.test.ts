@@ -1,5 +1,6 @@
 import { ALL_REGIONS, START_REGION, neighbors } from '../map/regions'
 import type { RegionId } from '../map/regions'
+import { edgeClaim } from '../report/world-edge'
 import { reducer } from './reducer'
 import {
   TRUTH_ATTEMPT,
@@ -8,6 +9,7 @@ import {
   initialState,
   isComplete,
   isConfirmed,
+  requiresEdgeCrossing,
 } from './state'
 import type { GameState } from './state'
 
@@ -132,16 +134,17 @@ describe('RESET', () => {
     expect(s.intensity).toBe('wild')
   })
 
-  test('世界のかたち指定つきでリセットしたとき、平面世界の初期状態になるべき', () => {
-    const s = reducer(initialState(), { type: 'RESET', worldShape: 'flat' })
-    expect(s.worldShape).toBe('flat')
-    expect(s).toEqual(initialState('standard', 'flat'))
+  test('世界のかたちが確定した後にリセットしたとき、世界のかたちが謎に戻るべき', () => {
+    const flatState: GameState = { ...initialState(), worldShape: 'flat', shapeAttempts: 3 }
+    const s = reducer(flatState, { type: 'RESET' })
+    expect(s.worldShape).toBe('unknown')
+    expect(s.shapeAttempts).toBe(0)
   })
 })
 
 describe('平面世界の探索', () => {
   test('平面世界で東端だけ確定しているとき、西端の海域が、派遣可能にならないべき', () => {
-    const base = initialState('standard', 'flat')
+    const base: GameState = { ...initialState(), worldShape: 'flat' }
     const eastConfirmed: GameState = {
       ...base,
       regions: { ...base.regions, 'r11-2': { attempts: 1, confirmedAttempt: 0 } },
@@ -150,5 +153,66 @@ describe('平面世界の探索', () => {
     // 球体世界なら同じ状況で派遣可能
     const globeVersion: GameState = { ...eastConfirmed, worldShape: 'globe' }
     expect(canDispatch(globeVersion, 'r0-2')).toBe(true)
+  })
+})
+
+describe('世界の果ての航海', () => {
+  /** 東端r11-2だけ確定 → 西端r0-2への派遣は果て越えになる状態 */
+  function edgeTestState(): GameState {
+    const base = initialState()
+    return {
+      ...base,
+      regions: { ...base.regions, 'r11-2': { attempts: 1, confirmedAttempt: 0 } },
+    }
+  }
+
+  const fallsAttempt = [0, 1, 2, 3, 4, 5, 6, 7].find((a) => edgeClaim(a) === 'falls')!
+  const passageAttempt = [0, 1, 2, 3, 4, 5, 6, 7].find((a) => edgeClaim(a) === 'passage')!
+
+  test('果て越えが必要な海域の判定が、通常の隣接がある場合と区別されるべき', () => {
+    const s = edgeTestState()
+    expect(requiresEdgeCrossing(s, 'r0-2')).toBe(true)
+    // 通常の隣接（r10-2）はfalse
+    expect(requiresEdgeCrossing(s, 'r10-2')).toBe(false)
+    // 世界のかたちが確定済みならfalse
+    expect(requiresEdgeCrossing({ ...s, worldShape: 'globe' }, 'r0-2')).toBe(false)
+  })
+
+  test('果て越えの派遣をしたとき、edgeフラグつきのsailingになりshapeAttemptsをattemptに使うべき', () => {
+    const s = { ...edgeTestState(), shapeAttempts: 2 }
+    const sailing = reducer(s, { type: 'DISPATCH', target: 'r0-2' })
+    expect(sailing.phase).toEqual({ type: 'sailing', target: 'r0-2', attempt: 2, edge: true })
+    const arrived = reducer(sailing, { type: 'ARRIVED' })
+    expect(arrived.phase).toEqual({ type: 'edgeReviewing', target: 'r0-2', attempt: 2 })
+  })
+
+  test('滝の報告を信じたとき、世界が平面と確定し海域は未確定のままであるべき', () => {
+    const s = { ...edgeTestState(), shapeAttempts: fallsAttempt }
+    const arrived = reducer(reducer(s, { type: 'DISPATCH', target: 'r0-2' }), { type: 'ARRIVED' })
+    const believed = reducer(arrived, { type: 'BELIEVE' })
+    expect(believed.worldShape).toBe('flat')
+    expect(isConfirmed(believed, 'r0-2')).toBe(false)
+    expect(believed.phase).toEqual({ type: 'idle' })
+    // 平面確定後は果て越えの派遣ができない
+    expect(canDispatch(believed, 'r0-2')).toBe(false)
+  })
+
+  test('海が続くという報告を信じたとき、世界が球体と確定し果て越えの派遣が可能になるべき', () => {
+    const s = { ...edgeTestState(), shapeAttempts: passageAttempt }
+    const arrived = reducer(reducer(s, { type: 'DISPATCH', target: 'r0-2' }), { type: 'ARRIVED' })
+    const believed = reducer(arrived, { type: 'BELIEVE' })
+    expect(believed.worldShape).toBe('globe')
+    expect(canDispatch(believed, 'r0-2')).toBe(true)
+    // 次の派遣は通常の地形報告になる
+    expect(requiresEdgeCrossing(believed, 'r0-2')).toBe(false)
+  })
+
+  test('果ての報告を信じないとき、shapeAttemptsが増えて世界のかたちは謎のままであるべき', () => {
+    const s = edgeTestState()
+    const arrived = reducer(reducer(s, { type: 'DISPATCH', target: 'r0-2' }), { type: 'ARRIVED' })
+    const rejected = reducer(arrived, { type: 'REJECT' })
+    expect(rejected.worldShape).toBe('unknown')
+    expect(rejected.shapeAttempts).toBe(1)
+    expect(rejected.phase).toEqual({ type: 'idle' })
   })
 })

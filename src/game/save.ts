@@ -5,15 +5,20 @@ import { ALL_REGIONS, isWorldShape } from '../map/regions'
 import type { RegionId } from '../map/regions'
 import { isLieIntensity } from '../report/config'
 import { initialState, isComplete } from './state'
-import type { GameState, RegionProgress } from './state'
+import type { GameState, RegionProgress, WorldKnowledge } from './state'
 
-export const SAVE_VERSION = 5
+function isWorldKnowledge(value: unknown): value is WorldKnowledge {
+  return value === 'unknown' || isWorldShape(value)
+}
+
+export const SAVE_VERSION = 6
 export const STORAGE_KEY = 'uso-atlas:save'
 
 interface SaveData {
   version: number
   intensity: string
   shape: string
+  shapeAttempts: number
   regions: Record<string, [number, number | null]>
 }
 
@@ -22,7 +27,13 @@ export function serialize(state: GameState): string {
   for (const [id, p] of Object.entries(state.regions)) {
     if (p) regions[id] = [p.attempts, p.confirmedAttempt]
   }
-  return JSON.stringify({ version: SAVE_VERSION, intensity: state.intensity, shape: state.worldShape, regions })
+  return JSON.stringify({
+    version: SAVE_VERSION,
+    intensity: state.intensity,
+    shape: state.worldShape,
+    shapeAttempts: state.shapeAttempts,
+    regions,
+  })
 }
 
 /** セーブJSONを解釈する。壊れたJSON・バージョン不一致・型不正は null（＝破棄）を返す */
@@ -33,7 +44,8 @@ export function parseSave(json: string): GameState | null {
     const save = data as Partial<SaveData>
     if (save.version !== SAVE_VERSION) return null
     if (!isLieIntensity(save.intensity)) return null
-    if (!isWorldShape(save.shape)) return null
+    if (!isWorldKnowledge(save.shape)) return null
+    if (typeof save.shapeAttempts !== 'number') return null
     if (typeof save.regions !== 'object' || save.regions === null) return null
 
     const regions: Partial<Record<RegionId, RegionProgress>> = {}
@@ -51,6 +63,7 @@ export function parseSave(json: string): GameState | null {
       phase: { type: 'idle' },
       intensity: save.intensity,
       worldShape: save.shape,
+      shapeAttempts: save.shapeAttempts,
     }
     return isComplete(state) ? { ...state, phase: { type: 'complete' } } : state
   } catch {
