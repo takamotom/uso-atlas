@@ -3,7 +3,7 @@ import { useGame } from '../hooks/use-game'
 import { useShipAnimation } from '../hooks/use-ship-animation'
 import { generateReport } from '../report/generate'
 import { exportMapPng } from '../render/export'
-import { edgeClaim } from '../report/world-edge'
+import { effectiveEdgeClaim, landAtWorldEdgeConfirmed } from '../game/state'
 import { isMuted, playSfx, setMuted } from '../sound/sfx'
 import { CompleteScreen } from './CompleteScreen'
 import { EdgeReportDialog } from './EdgeReportDialog'
@@ -106,7 +106,8 @@ export default function App() {
         shipPos={shipPos}
         truthOverlay={isComplete && truthOverlay}
         edgeFallsPreview={
-          state.phase.type === 'edgeReviewing' && edgeClaim(state.phase.attempt) === 'falls'
+          state.phase.type === 'edgeReviewing' &&
+          effectiveEdgeClaim(state, state.phase.attempt) === 'falls'
         }
         onRegionClick={(id) => {
           playSfx('sail')
@@ -115,7 +116,8 @@ export default function App() {
       />
       {state.phase.type === 'edgeReviewing' && (
         <EdgeReportDialog
-          claim={edgeClaim(state.phase.attempt)}
+          claim={effectiveEdgeClaim(state, state.phase.attempt)}
+          forced={landAtWorldEdgeConfirmed(state)}
           attempt={state.phase.attempt}
           onBelieve={() => {
             playSfx('stamp')

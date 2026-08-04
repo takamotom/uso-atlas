@@ -1,14 +1,17 @@
 import { ALL_REGIONS, START_REGION, neighbors } from '../map/regions'
 import type { RegionId } from '../map/regions'
+import { WORLD_EDGE_LAND_REGIONS } from '../map/world-data'
 import { edgeClaim } from '../report/world-edge'
 import { reducer } from './reducer'
 import {
   TRUTH_ATTEMPT,
   canDispatch,
   dispatchableRegions,
+  effectiveEdgeClaim,
   initialState,
   isComplete,
   isConfirmed,
+  landAtWorldEdgeConfirmed,
   requiresEdgeCrossing,
 } from './state'
 import type { GameState } from './state'
@@ -214,5 +217,29 @@ describe('世界の果ての航海', () => {
     expect(rejected.worldShape).toBe('unknown')
     expect(rejected.shapeAttempts).toBe(1)
     expect(rejected.phase).toEqual({ type: 'idle' })
+  })
+
+  test('果てに接する陸地が確定済みのとき、滝が出るはずの試行でも、海続き（球体）の報告になるべき', () => {
+    const edgeLandCell = WORLD_EDGE_LAND_REGIONS[0]
+    const s: GameState = {
+      ...edgeTestState(),
+      shapeAttempts: fallsAttempt,
+      regions: {
+        ...edgeTestState().regions,
+        [edgeLandCell]: { attempts: 1, confirmedAttempt: 0 },
+      },
+    }
+    expect(landAtWorldEdgeConfirmed(s)).toBe(true)
+    expect(effectiveEdgeClaim(s, fallsAttempt)).toBe('passage')
+    const arrived = reducer(reducer(s, { type: 'DISPATCH', target: 'r0-2' }), { type: 'ARRIVED' })
+    const believed = reducer(arrived, { type: 'BELIEVE' })
+    expect(believed.worldShape).toBe('globe')
+  })
+
+  test('果てに接する陸地が未確定のとき、実効的な主張が、シード通りの主張と一致するべき', () => {
+    const s = edgeTestState()
+    expect(landAtWorldEdgeConfirmed(s)).toBe(false)
+    expect(effectiveEdgeClaim(s, fallsAttempt)).toBe('falls')
+    expect(effectiveEdgeClaim(s, passageAttempt)).toBe('passage')
   })
 })

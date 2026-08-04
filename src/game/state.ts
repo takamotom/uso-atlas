@@ -1,8 +1,11 @@
 // ゲーム状態の型定義とセレクタ。DOM非依存。
 import { ALL_REGIONS, START_REGION, neighbors } from '../map/regions'
 import type { RegionId, WorldShape } from '../map/regions'
+import { WORLD_EDGE_LAND_REGIONS } from '../map/world-data'
 import { DEFAULT_INTENSITY } from '../report/config'
 import type { LieIntensity } from '../report/config'
+import { edgeClaim } from '../report/world-edge'
+import type { EdgeClaim } from '../report/world-edge'
 
 /** confirmedAttempt がこの値の海域は「強制的に真実」（開始海域用） */
 export const TRUTH_ATTEMPT = -1
@@ -78,6 +81,19 @@ export function requiresEdgeCrossing(state: GameState, id: RegionId): boolean {
 
 export function dispatchableRegions(state: GameState): RegionId[] {
   return ALL_REGIONS.filter((id) => canDispatch(state, id))
+}
+
+/** 世界の果てに接する陸地が、確定済みの地図に既に描かれているか */
+export function landAtWorldEdgeConfirmed(state: GameState): boolean {
+  return WORLD_EDGE_LAND_REGIONS.some((id) => isConfirmed(state, id))
+}
+
+/**
+ * 果ての報告の実効的な主張。地図の端に陸地が確定済みなら
+ * 「大地が果ての先へ続いている」＝滝はあり得ず、常に海続き（球体）の報告になる
+ */
+export function effectiveEdgeClaim(state: GameState, attempt: number): EdgeClaim {
+  return landAtWorldEdgeConfirmed(state) ? 'passage' : edgeClaim(attempt)
 }
 
 export function confirmedCount(state: GameState): number {

@@ -1,8 +1,13 @@
 // 探索フローの純関数reducer。不正な遷移は状態をそのまま返す。
 import type { RegionId } from '../map/regions'
 import type { LieIntensity } from '../report/config'
-import { edgeClaim } from '../report/world-edge'
-import { canDispatch, initialState, isComplete, requiresEdgeCrossing } from './state'
+import {
+  canDispatch,
+  effectiveEdgeClaim,
+  initialState,
+  isComplete,
+  requiresEdgeCrossing,
+} from './state'
 import type { GameState, RegionProgress } from './state'
 
 export type Action =
@@ -39,7 +44,7 @@ export function reducer(state: GameState, action: Action): GameState {
     case 'BELIEVE': {
       if (state.phase.type === 'edgeReviewing') {
         // 果ての報告を信じる = 世界のかたちが確定する（海域はまだ確定しない）
-        const claim = edgeClaim(state.phase.attempt)
+        const claim = effectiveEdgeClaim(state, state.phase.attempt)
         return {
           ...state,
           worldShape: claim === 'falls' ? 'flat' : 'globe',

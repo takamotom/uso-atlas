@@ -1,8 +1,9 @@
 // 前処理出力（world-regions.json）のデータ検査テスト
 import worldData from '../assets/world-regions.json'
 import type { Ring } from './geo'
-import { COLS, LAT_STEP, LON_STEP, ROWS, START_REGION, regionBBox } from './regions'
+import { COLS, LAT_STEP, LON_STEP, ROWS, START_REGION, parseRegionId, regionBBox } from './regions'
 import type { RegionId } from './regions'
+import { WORLD_EDGE_LAND_REGIONS } from './world-data'
 
 const regions = worldData.regions as unknown as Record<RegionId, Ring[]>
 
@@ -36,6 +37,17 @@ describe('world-regions.json', () => {
       for (const ring of rings) {
         expect(ring.length).toBeGreaterThanOrEqual(3)
       }
+    }
+  })
+})
+
+describe('WORLD_EDGE_LAND_REGIONS', () => {
+  test('果て接地セルが、抽出されたとき、東西の端の列だけを含み空でないべき', () => {
+    // 地図の切れ目（元の西経30度線）はグリーンランド等を跨ぐため必ず存在する
+    expect(WORLD_EDGE_LAND_REGIONS.length).toBeGreaterThan(0)
+    for (const id of WORLD_EDGE_LAND_REGIONS) {
+      const { col } = parseRegionId(id)
+      expect([0, COLS - 1]).toContain(col)
     }
   })
 })

@@ -76,11 +76,13 @@ export function drawWorldEdgeFalls(ctx: CanvasRenderingContext2D, vt: ViewTransf
     const inward = edgeX < vt.width / 2 ? 1 : -1
     if (edgeX + inward * stripW < -stripW || edgeX - inward * stripW > vt.width + stripW) continue
     ctx.save()
-    // 縁に向かって白く泡立つグラデーション
+    // 縁に向かって白く泡立つグラデーション。
+    // 外側は完全に不透明にして、果てに接する大地の切れ端を泡霞が飲み込む
     const grad = ctx.createLinearGradient(edgeX + inward * stripW, 0, edgeX, 0)
     grad.addColorStop(0, 'rgba(250, 248, 240, 0)')
-    grad.addColorStop(0.6, 'rgba(250, 248, 240, 0.5)')
-    grad.addColorStop(1, 'rgba(255, 253, 246, 0.95)')
+    grad.addColorStop(0.45, 'rgba(250, 248, 240, 0.55)')
+    grad.addColorStop(0.75, 'rgba(253, 251, 244, 0.92)')
+    grad.addColorStop(1, 'rgb(255, 253, 246)')
     ctx.fillStyle = grad
     ctx.fillRect(Math.min(edgeX, edgeX + inward * stripW), 0, stripW, vt.height)
     // 落水の筋

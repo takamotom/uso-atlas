@@ -4,8 +4,8 @@ import { ALL_REGIONS } from '../map/regions'
 import type { LieIntensity } from '../report/config'
 import { CaptainSelect } from './CaptainSelect'
 
+// 世界のかたちは隠し要素: 果ての報告で確定するまでバッジ自体を出さない
 const WORLD_BADGES = {
-  unknown: { icon: '❓', label: '世界のかたち: 謎' },
   globe: { icon: '🌐', label: '世界のかたち: 球体' },
   flat: { icon: '🫓', label: '世界のかたち: 平面' },
 } as const
@@ -35,7 +35,7 @@ export function Hud({
 }: Props) {
   const count = confirmedCount(state)
   const complete = state.phase.type === 'complete'
-  const worldBadge = WORLD_BADGES[state.worldShape]
+  const worldBadge = state.worldShape === 'unknown' ? null : WORLD_BADGES[state.worldShape]
   return (
     <header className="hud">
       <h1 className="hud-title">うそアトラス</h1>
@@ -49,9 +49,11 @@ export function Hud({
         {state.phase.type === 'edgeReviewing' && '世界の果ての報告を信じますか？'}
         {complete && '世界地図、完成！'}
       </p>
-      <span className="world-badge" title="世界のかたちは、果てを跨ぐ航海の報告で決まる">
-        {worldBadge.icon} {worldBadge.label}
-      </span>
+      {worldBadge && (
+        <span className="world-badge">
+          {worldBadge.icon} {worldBadge.label}
+        </span>
+      )}
       <CaptainSelect value={state.intensity} onChange={onIntensityChange} />
       <div className="hud-buttons">
         <button

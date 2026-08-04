@@ -1,16 +1,18 @@
 // 世界の果てを跨ぐ航海の特別報告。信じると世界のかたち（球体/平面）が確定する
-import { EDGE_CLAIM_TEXT } from '../report/world-edge'
+import { EDGE_CLAIM_TEXT, EDGE_FORCED_PASSAGE_TEXT } from '../report/world-edge'
 import type { EdgeClaim } from '../report/world-edge'
 
 interface Props {
   claim: EdgeClaim
+  /** 地図の端に陸地が確定済みで、滝の主張が成立しない場合true（専用台詞になる） */
+  forced: boolean
   attempt: number
   onBelieve: () => void
   onReject: () => void
 }
 
-export function EdgeReportDialog({ claim, attempt, onBelieve, onReject }: Props) {
-  const text = EDGE_CLAIM_TEXT[claim]
+export function EdgeReportDialog({ claim, forced, attempt, onBelieve, onReject }: Props) {
+  const text = forced ? EDGE_FORCED_PASSAGE_TEXT : EDGE_CLAIM_TEXT[claim]
   return (
     <div className="report-dialog report-dialog-edge" role="dialog" aria-label="世界の果ての報告">
       <div className="report-header">
