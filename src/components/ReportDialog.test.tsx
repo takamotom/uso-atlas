@@ -5,7 +5,7 @@ import { ReportDialog } from './ReportDialog'
 describe('ReportDialog', () => {
   test('報告ダイアログが、表示されたとき、信じる/信じないボタンと航海回数を示すべき', () => {
     render(
-      <ReportDialog regionId="r6-1" attempt={2} intensity="standard" onBelieve={() => {}} onReject={() => {}} />,
+      <ReportDialog regionId="r6-1" attempt={2} intensity="standard" bridges={[]} onBelieve={() => {}} onReject={() => {}} />,
     )
     expect(screen.getByRole('button', { name: '信じる' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '信じない' })).toBeInTheDocument()
@@ -16,7 +16,7 @@ describe('ReportDialog', () => {
     const onBelieve = vi.fn()
     const onReject = vi.fn()
     render(
-      <ReportDialog regionId="r6-1" attempt={0} intensity="standard" onBelieve={onBelieve} onReject={onReject} />,
+      <ReportDialog regionId="r6-1" attempt={0} intensity="standard" bridges={[]} onBelieve={onBelieve} onReject={onReject} />,
     )
     await userEvent.click(screen.getByRole('button', { name: '信じる' }))
     expect(onBelieve).toHaveBeenCalledTimes(1)
@@ -27,7 +27,7 @@ describe('ReportDialog', () => {
     const onBelieve = vi.fn()
     const onReject = vi.fn()
     render(
-      <ReportDialog regionId="r6-1" attempt={0} intensity="standard" onBelieve={onBelieve} onReject={onReject} />,
+      <ReportDialog regionId="r6-1" attempt={0} intensity="standard" bridges={[]} onBelieve={onBelieve} onReject={onReject} />,
     )
     await userEvent.click(screen.getByRole('button', { name: '信じない' }))
     expect(onReject).toHaveBeenCalledTimes(1)
@@ -42,6 +42,7 @@ describe('ReportDialog', () => {
           regionId="r6-1"
           attempt={attempt}
           intensity="wild"
+          bridges={[]}
           onBelieve={() => {}}
           onReject={() => {}}
         />,
@@ -55,14 +56,43 @@ describe('ReportDialog', () => {
     expect(sawDreamQuote).toBe(true)
   })
 
+  test('陸橋つきの報告が、表示されたとき、方角つきの陸橋案内を表示するべき', () => {
+    render(
+      <ReportDialog
+        regionId="r8-2"
+        attempt={0}
+        intensity="standard"
+        bridges={['ve:8:2', 'he:8:1']}
+        onBelieve={() => {}}
+        onReject={() => {}}
+      />,
+    )
+    expect(screen.getByText(/東・北/)).toBeInTheDocument()
+    expect(screen.getByText(/隣の海域にも続きの大地が現れる/)).toBeInTheDocument()
+  })
+
+  test('陸橋なしの報告が、表示されたとき、陸橋案内を表示しないべき', () => {
+    render(
+      <ReportDialog
+        regionId="r8-2"
+        attempt={0}
+        intensity="standard"
+        bridges={[]}
+        onBelieve={() => {}}
+        onReject={() => {}}
+      />,
+    )
+    expect(screen.queryByText(/続きの大地/)).not.toBeInTheDocument()
+  })
+
   test('同じ海域と試行の報告が、再表示されたとき、同じ台詞を表示するべき', () => {
     const first = render(
-      <ReportDialog regionId="r3-2" attempt={1} intensity="standard" onBelieve={() => {}} onReject={() => {}} />,
+      <ReportDialog regionId="r3-2" attempt={1} intensity="standard" bridges={[]} onBelieve={() => {}} onReject={() => {}} />,
     )
     const quote1 = first.container.querySelector('.report-quote')?.textContent
     first.unmount()
     const second = render(
-      <ReportDialog regionId="r3-2" attempt={1} intensity="standard" onBelieve={() => {}} onReject={() => {}} />,
+      <ReportDialog regionId="r3-2" attempt={1} intensity="standard" bridges={[]} onBelieve={() => {}} onReject={() => {}} />,
     )
     const quote2 = second.container.querySelector('.report-quote')?.textContent
     expect(quote1).toBe(quote2)

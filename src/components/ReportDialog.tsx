@@ -1,3 +1,5 @@
+import { edgeDirection } from '../map/edges'
+import type { EdgeId } from '../map/edges'
 import { regionName } from '../map/region-names'
 import type { RegionId } from '../map/regions'
 import type { LieIntensity } from '../report/config'
@@ -51,13 +53,18 @@ interface Props {
   regionId: RegionId
   attempt: number
   intensity: LieIntensity
+  /** 報告に含まれる陸橋。信じると隣の海域へ大陸が続く */
+  bridges: EdgeId[]
   onBelieve: () => void
   onReject: () => void
 }
 
-export function ReportDialog({ regionId, attempt, intensity, onBelieve, onReject }: Props) {
+export function ReportDialog({ regionId, attempt, intensity, bridges, onBelieve, onReject }: Props) {
   const pool = [...COMMON_QUOTES, ...CAPTAIN_FLAVOR_QUOTES[intensity]]
   const quote = pick(createRng(`quote:${regionId}:${attempt}`), pool)
+  const directions = bridges
+    .map((edge) => edgeDirection(regionId, edge))
+    .filter((d): d is NonNullable<typeof d> => d !== null)
   return (
     <div className="report-dialog" role="dialog" aria-label="船長の報告">
       <div className="report-header">
@@ -65,6 +72,12 @@ export function ReportDialog({ regionId, attempt, intensity, onBelieve, onReject
         <span className="report-attempt">{attempt + 1}度目の航海</span>
       </div>
       <p className="report-quote">「{quote}」</p>
+      {directions.length > 0 && (
+        <p className="report-bridges">
+          ⚓ 船長曰く、この陸地は<strong>{directions.join('・')}</strong>
+          の海の先へまだ続いているとのこと。信じれば、隣の海域にも続きの大地が現れる。
+        </p>
+      )}
       <p className="report-hint">地図上の赤い破線が、船長の主張する新しい地形です。</p>
       <div className="report-buttons">
         <button type="button" className="btn-believe" onClick={onBelieve}>

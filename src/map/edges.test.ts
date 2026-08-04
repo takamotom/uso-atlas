@@ -35,11 +35,11 @@ describe('bridgeProfile', () => {
     expect(bridgeProfile('ve:5:2')).toEqual(bridgeProfile('ve:5:2'))
   })
 
-  test('プロファイルの範囲が、辺の内側40%かつ幅2〜4.5度に収まるべき', () => {
+  test('プロファイルの範囲が、辺の内側40%かつ幅2.5〜5.5度に収まるべき', () => {
     for (const edge of ['ve:3:1', 've:7:4', 'he:2:2', 'he:10:0'] as const) {
       const { center, halfWidth } = bridgeProfile(edge)
-      expect(halfWidth).toBeGreaterThanOrEqual(2)
-      expect(halfWidth).toBeLessThanOrEqual(4.5)
+      expect(halfWidth).toBeGreaterThanOrEqual(2.5)
+      expect(halfWidth).toBeLessThanOrEqual(5.5)
       // 中心は辺の内側30%〜70%
       expect(center % 30).not.toBe(0)
     }

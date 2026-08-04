@@ -37,7 +37,7 @@ export function bridgeStubRing(
   if (!dir || !rect) return null
   const { center, halfWidth } = bridgeProfile(edge)
   const rng = createRng(seed)
-  const depth = rollRange(rng, 4, 11)
+  const depth = rollRange(rng, 5, 13)
   const harmonics = [1, 2, 3].map((k) => ({
     k,
     amp: rollRange(rng, 0, 0.3 / k),

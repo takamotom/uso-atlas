@@ -53,7 +53,7 @@ export default function App() {
     if (state.phase.type !== 'reviewing') return null
     const { target, attempt } = state.phase
     const report = generateReport(target, attempt, state.intensity, bridgeContext(state, target))
-    return { region: target, geometry: report.geometry }
+    return { region: target, geometry: report.geometry, bridges: report.bridges }
   }, [state])
 
   // 開発用ギャラリー: URL末尾に #gallery を付けると報告のバリエーションを一覧できる
@@ -135,6 +135,7 @@ export default function App() {
           regionId={state.phase.target}
           attempt={state.phase.attempt}
           intensity={state.intensity}
+          bridges={preview?.bridges ?? []}
           onBelieve={() => {
             playSfx('stamp')
             dispatch({ type: 'BELIEVE' })

@@ -49,6 +49,26 @@ export interface BridgeProfile {
   halfWidth: number
 }
 
+/** セルから見た辺の方角（報告ダイアログの表示用） */
+export function edgeDirection(id: RegionId, edge: EdgeId): '東' | '西' | '南' | '北' | null {
+  const { col, row } = parseRegionId(id)
+  const m = /^(ve|he):(\d+):(\d+)$/.exec(edge)
+  if (!m) return null
+  const [, kind, cs, rs] = m
+  const ecol = Number(cs)
+  const erow = Number(rs)
+  if (kind === 've') {
+    if (erow !== row) return null
+    if (ecol === col) return '東'
+    if (ecol === col - 1) return '西'
+    return null
+  }
+  if (ecol !== col) return null
+  if (erow === row) return '南'
+  if (erow === row - 1) return '北'
+  return null
+}
+
 /** 辺IDから決定的に陸橋の位置・幅を導く（両側のセルで必ず同じ値になる） */
 export function bridgeProfile(edge: EdgeId): BridgeProfile {
   const m = /^(ve|he):(\d+):(\d+)$/.exec(edge)!
@@ -57,7 +77,7 @@ export function bridgeProfile(edge: EdgeId): BridgeProfile {
   const row = Number(rs)
   const bbox = regionBBox(regionId(col, row))
   const rng = createRng(`bridge-profile:${edge}`)
-  const halfWidth = rollRange(rng, 2, 4.5)
+  const halfWidth = rollRange(rng, 2.5, 5.5)
   // 辺の端（セルの角）に寄ると隣接する直交方向の境界帯を侵すため、内側40%の範囲に置く
   const t = rollRange(rng, 0.3, 0.7)
   const center =

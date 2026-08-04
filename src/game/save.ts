@@ -12,7 +12,7 @@ function isWorldKnowledge(value: unknown): value is WorldKnowledge {
   return value === 'unknown' || isWorldShape(value)
 }
 
-export const SAVE_VERSION = 7
+export const SAVE_VERSION = 8
 export const STORAGE_KEY = 'uso-atlas:save'
 
 interface SaveData {
