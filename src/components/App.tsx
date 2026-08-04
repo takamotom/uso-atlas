@@ -3,7 +3,7 @@ import { useGame } from '../hooks/use-game'
 import { useShipAnimation } from '../hooks/use-ship-animation'
 import { generateReport } from '../report/generate'
 import { exportMapPng } from '../render/export'
-import { effectiveEdgeClaim, landAtWorldEdgeConfirmed } from '../game/state'
+import { bridgeContext, effectiveEdgeClaim, landAtWorldEdgeConfirmed } from '../game/state'
 import { isMuted, playSfx, setMuted } from '../sound/sfx'
 import { CompleteScreen } from './CompleteScreen'
 import { EdgeReportDialog } from './EdgeReportDialog'
@@ -52,8 +52,9 @@ export default function App() {
   const preview = useMemo(() => {
     if (state.phase.type !== 'reviewing') return null
     const { target, attempt } = state.phase
-    return { region: target, geometry: generateReport(target, attempt, state.intensity).geometry }
-  }, [state.phase, state.intensity])
+    const report = generateReport(target, attempt, state.intensity, bridgeContext(state, target))
+    return { region: target, geometry: report.geometry }
+  }, [state])
 
   // 開発用ギャラリー: URL末尾に #gallery を付けると報告のバリエーションを一覧できる
   if (window.location.hash === '#gallery') return <GalleryView />

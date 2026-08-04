@@ -1,7 +1,9 @@
 // 探索フローの純関数reducer。不正な遷移は状態をそのまま返す。
 import type { RegionId } from '../map/regions'
 import type { LieIntensity } from '../report/config'
+import { generateReport } from '../report/generate'
 import {
+  bridgeContext,
   canDispatch,
   effectiveEdgeClaim,
   initialState,
@@ -54,11 +56,13 @@ export function reducer(state: GameState, action: Action): GameState {
       if (state.phase.type !== 'reviewing') return state
       const { target, attempt } = state.phase
       const prev = progressOf(state, target)
+      // 信じた報告の陸橋セットを記録する（確定ジオメトリの再現と、隣セルへの伝播に必要）
+      const report = generateReport(target, attempt, state.intensity, bridgeContext(state, target))
       const next: GameState = {
         ...state,
         regions: {
           ...state.regions,
-          [target]: { attempts: prev.attempts, confirmedAttempt: attempt },
+          [target]: { attempts: prev.attempts, confirmedAttempt: attempt, bridges: report.bridges },
         },
         phase: { type: 'idle' },
       }

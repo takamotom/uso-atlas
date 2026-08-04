@@ -1,11 +1,19 @@
+import { bridgeBandRect, cellEdges } from '../map/edges'
 import { distToRectBorder, distToRingOutline } from '../map/geo'
-import type { Point, Ring } from '../map/geo'
+import type { BBox, Point, Ring } from '../map/geo'
 import { ALL_REGIONS, START_REGION, regionBBox } from '../map/regions'
+import type { RegionId } from '../map/regions'
 import { landRatio, truthGeometry } from '../map/world-data'
 import { INLAND_LAND_RATIO, INTENSITY_PRESETS } from './config'
 import type { LieIntensity } from './config'
-import { FORCED_TRUTH_ATTEMPT, generateReport } from './generate'
+import { FORCED_TRUTH_ATTEMPT, generateReport, reportGeometryWithBridges } from './generate'
 import { marginOf } from './transforms'
+
+function inRect(p: Point, rect: BBox, eps = 1e-6): boolean {
+  return (
+    p[0] >= rect.x0 - eps && p[0] <= rect.x1 + eps && p[1] >= rect.y0 - eps && p[1] <= rect.y1 + eps
+  )
+}
 
 const INTENSITIES: LieIntensity[] = ['mild', 'standard', 'wild']
 
@@ -68,6 +76,68 @@ describe('generateReport', () => {
   })
 })
 
+describe('陸橋', () => {
+  test('陸橋のロールが、同じ海域・試行・レベルで、決定的であるべき', () => {
+    const a = generateReport('r8-2', 3, 'wild')
+    const b = generateReport('r8-2', 3, 'wild')
+    expect(a.bridges).toEqual(b.bridges)
+  })
+
+  test('夢見る船長の嘘報告が、多数の試行で、陸橋を含む場合があるべき', () => {
+    let sawBridge = false
+    for (let attempt = 0; attempt < 20 && !sawBridge; attempt++) {
+      const report = generateReport('r8-2', attempt, 'wild')
+      if (report.kind === 'lie' && report.bridges.length > 0) sawBridge = true
+    }
+    expect(sawBridge).toBe(true)
+  })
+
+  test('必須の陸橋が、真実の報告でも、続きの陸として含まれるべき', () => {
+    const id: RegionId = 'r8-2'
+    const edge = cellEdges(id)[0]
+    // 真実になるattemptを探す
+    let truthAttempt = -999
+    for (let attempt = 0; attempt < 30; attempt++) {
+      if (generateReport(id, attempt, 'standard').kind === 'truth') {
+        truthAttempt = attempt
+        break
+      }
+    }
+    expect(truthAttempt).not.toBe(-999)
+    const report = generateReport(id, truthAttempt, 'standard', {
+      required: [edge],
+      allowed: [],
+    })
+    expect(report.kind).toBe('truth')
+    expect(report.bridges).toContain(edge)
+    expect(report.geometry.length).toBeGreaterThan(truthGeometry(id).length)
+  })
+
+  test('記録済み陸橋からの再現が、同じ陸橋つき報告のジオメトリと一致するべき', () => {
+    const id: RegionId = 'r8-2'
+    const edge = cellEdges(id)[0]
+    const report = generateReport(id, 2, 'standard', { required: [edge], allowed: [] })
+    const rebuilt = reportGeometryWithBridges(id, 2, 'standard', report.bridges)
+    expect(rebuilt).toEqual(report.geometry)
+  })
+
+  test('陸橋スタブの帯内頂点が、宣言された陸橋の帯矩形に収まっているべき', () => {
+    const id: RegionId = 'r8-2'
+    const margin = marginOf(regionBBox(id), INTENSITY_PRESETS.standard)
+    for (const edge of cellEdges(id)) {
+      const report = generateReport(id, 0, 'standard', { required: [edge], allowed: [] })
+      const rect = bridgeBandRect(id, edge, margin)!
+      const bandVertices = report.geometry
+        .flat()
+        .filter((p) => distToRectBorder(p, regionBBox(id)) <= margin / 2)
+      expect(bandVertices.length).toBeGreaterThan(0)
+      for (const p of bandVertices) {
+        expect(inRect(p, rect)).toBe(true)
+      }
+    }
+  })
+})
+
 describe('境界不変条件（プロパティテスト）', () => {
   test.each(INTENSITIES)(
     'レベル%sの全海域×6試行の嘘報告で、境界帯内の頂点が真実の輪郭線上にあり、全頂点がbbox内にあるべき',
@@ -87,7 +157,13 @@ describe('境界不変条件（プロパティテスト）', () => {
               expect(p[1]).toBeGreaterThanOrEqual(bbox.y0 - 1e-9)
               expect(p[1]).toBeLessThanOrEqual(bbox.y1 + 1e-9)
               if (distToRectBorder(p, bbox) <= margin / 2) {
-                expect(minDistToOutlines(p, truth)).toBeLessThan(1e-6)
+                // 帯内の頂点は真実の輪郭上か、報告が宣言した陸橋の帯矩形内でなければならない
+                const onTruth = minDistToOutlines(p, truth) < 1e-6
+                const onBridge = report.bridges.some((e) => {
+                  const rect = bridgeBandRect(id, e, margin)
+                  return rect !== null && inRect(p, rect)
+                })
+                expect(onTruth || onBridge).toBe(true)
               }
             }
           }

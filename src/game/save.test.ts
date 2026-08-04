@@ -91,7 +91,7 @@ describe('serialize/deserialize', () => {
       intensity: 'standard',
       shape: 'globe',
       shapeAttempts: 0,
-      regions: { 'r99-99': [1, 0] },
+      regions: { 'r99-99': [1, 0, []] },
     })
     expect(deserialize(bad)).toEqual(initialState())
   })

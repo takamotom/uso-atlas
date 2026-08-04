@@ -143,7 +143,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, o: SceneOptions): void 
   for (const id of ALL_REGIONS) {
     const p = state.regions[id]
     if (p?.confirmedAttempt != null)
-      drawLand(ctx, confirmedGeometry(id, p.confirmedAttempt, state.intensity), vt)
+      drawLand(ctx, confirmedGeometry(id, p.confirmedAttempt, state.intensity, p.bridges), vt)
   }
 
   if (o.truthOverlay) drawTruthOverlay(ctx, vt)

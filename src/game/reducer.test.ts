@@ -1,10 +1,12 @@
 import { ALL_REGIONS, START_REGION, neighbors } from '../map/regions'
 import type { RegionId } from '../map/regions'
 import { WORLD_EDGE_LAND_REGIONS } from '../map/world-data'
+import { generateReport } from '../report/generate'
 import { edgeClaim } from '../report/world-edge'
 import { reducer } from './reducer'
 import {
   TRUTH_ATTEMPT,
+  bridgeContext,
   canDispatch,
   dispatchableRegions,
   effectiveEdgeClaim,
@@ -156,6 +158,62 @@ describe('平面世界の探索', () => {
     // 球体世界なら同じ状況で派遣可能
     const globeVersion: GameState = { ...eastConfirmed, worldShape: 'globe' }
     expect(canDispatch(globeVersion, 'r0-2')).toBe(true)
+  })
+})
+
+describe('陸橋', () => {
+  test('陸橋つきで確定した隣の辺が、このセルのコンテキストで必須になるべき', () => {
+    const base = initialState()
+    const edge = 've:8:2' as const
+    const withBridge: GameState = {
+      ...base,
+      regions: {
+        ...base.regions,
+        'r8-2': { attempts: 1, confirmedAttempt: 0, bridges: [edge] },
+      },
+    }
+    const ctx = bridgeContext(withBridge, 'r9-2')
+    expect(ctx.required).toContain(edge)
+    expect(ctx.allowed).not.toContain(edge)
+  })
+
+  test('隣が陸橋なしで確定済みの辺が、必須にも許可にも入らないべき（矛盾防止）', () => {
+    const base = initialState()
+    const withPlain: GameState = {
+      ...base,
+      regions: { ...base.regions, 'r8-2': { attempts: 1, confirmedAttempt: 0 } },
+    }
+    const ctx = bridgeContext(withPlain, 'r9-2')
+    expect(ctx.required).not.toContain('ve:8:2')
+    expect(ctx.allowed).not.toContain('ve:8:2')
+  })
+
+  test('信じるを選んだとき、その報告の陸橋がRegionProgressに記録されるべき', () => {
+    const base = initialState()
+    const target = adjacentToStart
+    // 陸橋を含む嘘のattemptを探す
+    let bridgedAttempt = -1
+    for (let attempt = 0; attempt < 60; attempt++) {
+      const report = generateReport(target, attempt, base.intensity, bridgeContext(base, target))
+      if (report.kind === 'lie' && report.bridges.length > 0) {
+        bridgedAttempt = attempt
+        break
+      }
+    }
+    expect(bridgedAttempt).toBeGreaterThanOrEqual(0)
+    const expected = generateReport(
+      target,
+      bridgedAttempt,
+      base.intensity,
+      bridgeContext(base, target),
+    ).bridges
+    const reviewing: GameState = {
+      ...base,
+      phase: { type: 'reviewing', target, attempt: bridgedAttempt },
+    }
+    const believed = reducer(reviewing, { type: 'BELIEVE' })
+    expect(believed.regions[target]?.bridges).toEqual(expected)
+    expect(believed.regions[target]?.bridges?.length).toBeGreaterThan(0)
   })
 })
 

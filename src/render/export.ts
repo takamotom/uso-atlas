@@ -20,7 +20,7 @@ export function renderExportCanvas(state: GameState): HTMLCanvasElement {
   for (const id of ALL_REGIONS) {
     const p = state.regions[id]
     if (p?.confirmedAttempt != null)
-      drawLand(ctx, confirmedGeometry(id, p.confirmedAttempt, state.intensity), vt)
+      drawLand(ctx, confirmedGeometry(id, p.confirmedAttempt, state.intensity, p.bridges), vt)
   }
   for (const id of ALL_REGIONS) {
     if (isConfirmed(state, id)) continue

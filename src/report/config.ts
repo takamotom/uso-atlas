@@ -60,6 +60,11 @@ export interface LiePreset {
    * 境界を跨ぐ陸地に接続すれば、隣の海域の陸地と繋がった大陸に見える
    */
   extensionProbability: number
+  /**
+   * 嘘の報告が辺ごとに「陸橋」（隣のセルへ跨ぐ大陸の根元）を含む確率。
+   * 信じると隣のセルの以後の報告すべてに続きの陸が現れ、複数マスの大陸に育つ
+   */
+  bridgeProbability: number
   /** 消失変換で内陸リングが削除される確率 */
   vanishProbability: number
   /** 境界接続の大陸が「沈没」する（境界の残骸だけ残して消える）確率 */
@@ -85,6 +90,7 @@ export const INTENSITY_PRESETS: Record<LieIntensity, LiePreset> = {
     continentClamp: 1.4,
     megaContinentProbability: 0,
     extensionProbability: 0.1,
+    bridgeProbability: 0.05,
     vanishProbability: 0.5,
     totalVanishProbability: 0,
     erodeStrength: { min: 0.2, max: 0.4 },
@@ -104,6 +110,7 @@ export const INTENSITY_PRESETS: Record<LieIntensity, LiePreset> = {
     continentClamp: 1.4,
     megaContinentProbability: 0,
     extensionProbability: 0.25,
+    bridgeProbability: 0.18,
     vanishProbability: 0.8,
     totalVanishProbability: 0,
     erodeStrength: { min: 0.3, max: 0.6 },
@@ -124,6 +131,7 @@ export const INTENSITY_PRESETS: Record<LieIntensity, LiePreset> = {
     continentClamp: 1.3,
     megaContinentProbability: 0.3,
     extensionProbability: 0.35,
+    bridgeProbability: 0.35,
     vanishProbability: 0.9,
     totalVanishProbability: 0.5,
     erodeStrength: { min: 0.5, max: 0.9 },

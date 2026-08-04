@@ -1,10 +1,16 @@
 // 船長の報告の生成。同じ (regionId, attempt, intensity) からは常に同じ報告が得られる（決定的）。
+// 陸橋（隣セルへ跨ぐ大陸）だけは探索状況に依存するため BridgeContext を受け取り、
+// 信じた時点の陸橋セットをセーブに記録して再現する。
+import { cellEdges } from '../map/edges'
+import type { EdgeId } from '../map/edges'
 import type { Ring } from '../map/geo'
 import { regionBBox } from '../map/regions'
 import type { RegionId } from '../map/regions'
 import { landRatio, truthGeometry } from '../map/world-data'
+import { applyBridges } from './bridges'
 import { DEFAULT_INTENSITY, INLAND_LAND_RATIO, INTENSITY_PRESETS } from './config'
 import type { LieIntensity, LiePreset } from './config'
+import { marginOf } from './transforms'
 import { createRng, rollInt } from './random'
 import type { Rng } from './random'
 import { carveLakes, distortRings, fabricateIslands, vanishRings } from './transforms'
@@ -18,6 +24,46 @@ export interface Report {
   kind: 'truth' | 'lie'
   lieOps: LieOp[]
   geometry: Ring[]
+  /** この報告に含まれる陸橋（信じるとセーブに記録され、隣セルの報告に続きが現れる） */
+  bridges: EdgeId[]
+}
+
+export interface BridgeContext {
+  /** 隣セルが陸橋つきで確定済みの辺。すべての報告（真実含む）に続きの陸が必ず含まれる */
+  required: EdgeId[]
+  /** 隣セルが未確定で、新たに陸橋をロールできる辺 */
+  allowed: EdgeId[]
+}
+
+/** ギャラリー等、探索状況と無関係に生成する場合の既定コンテキスト */
+function defaultContext(id: RegionId): BridgeContext {
+  return { required: [], allowed: cellEdges(id) }
+}
+
+/** 辺ごとに独立したシードで陸橋をロールする（allowedの構成に依存しない＝再現可能） */
+function rollBridges(
+  id: RegionId,
+  attempt: number,
+  intensity: LieIntensity,
+  allowed: EdgeId[],
+): EdgeId[] {
+  const prob = INTENSITY_PRESETS[intensity].bridgeProbability
+  return allowed.filter(
+    (edge) => createRng(`${intensity}:${id}:${attempt}:bridge:${edge}`)() < prob,
+  )
+}
+
+/** 確定済み海域の再現用: 記録された陸橋セットからジオメトリを組み立てる */
+export function reportGeometryWithBridges(
+  id: RegionId,
+  attempt: number,
+  intensity: LieIntensity,
+  bridges: EdgeId[],
+): Ring[] {
+  const base = generateBaseReport(id, attempt, intensity)
+  const preset = INTENSITY_PRESETS[intensity]
+  const margin = marginOf(regionBBox(id), preset)
+  return applyBridges(base.geometry, id, bridges, margin, `${intensity}:${id}:${attempt}`)
 }
 
 function chooseLieOps(rng: Rng, hasLand: boolean, inland: boolean, preset: LiePreset): LieOp[] {
@@ -38,11 +84,12 @@ function chooseLieOps(rng: Rng, hasLand: boolean, inland: boolean, preset: LiePr
   return order.filter((op) => ops.includes(op))
 }
 
-export function generateReport(
+/** 陸橋を除いた基本報告（従来の決定的生成そのまま） */
+function generateBaseReport(
   id: RegionId,
   attempt: number,
-  intensity: LieIntensity = DEFAULT_INTENSITY,
-): Report {
+  intensity: LieIntensity,
+): Omit<Report, 'bridges'> {
   const truth = truthGeometry(id)
   if (attempt === FORCED_TRUTH_ATTEMPT) return { kind: 'truth', lieOps: [], geometry: truth }
 
@@ -61,4 +108,27 @@ export function generateReport(
     else geometry = fabricateIslands(geometry, bbox, rng, preset)
   }
   return { kind: 'lie', lieOps: ops, geometry }
+}
+
+export function generateReport(
+  id: RegionId,
+  attempt: number,
+  intensity: LieIntensity = DEFAULT_INTENSITY,
+  ctx?: BridgeContext,
+): Report {
+  const context = ctx ?? defaultContext(id)
+  const base = generateBaseReport(id, attempt, intensity)
+  // 嘘のみ新しい陸橋をロールできる。隣が既に陸橋つきで確定した辺は真実の報告にも必ず現れる
+  const rolled = base.kind === 'lie' ? rollBridges(id, attempt, intensity, context.allowed) : []
+  const bridges = [...new Set([...context.required, ...rolled])]
+  const preset = INTENSITY_PRESETS[intensity]
+  const margin = marginOf(regionBBox(id), preset)
+  const geometry = applyBridges(
+    base.geometry,
+    id,
+    bridges,
+    margin,
+    `${intensity}:${id}:${attempt}`,
+  )
+  return { ...base, bridges, geometry }
 }

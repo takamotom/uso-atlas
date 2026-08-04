@@ -2,6 +2,7 @@
 // SAVE_VERSION は報告生成アルゴリズムやチューニング定数（report/config.ts）、
 // 地図データ（world-regions.json）を変更したら必ず上げること。不一致のセーブは破棄される。
 import { ALL_REGIONS, isWorldShape } from '../map/regions'
+import type { EdgeId } from '../map/edges'
 import type { RegionId } from '../map/regions'
 import { isLieIntensity } from '../report/config'
 import { initialState, isComplete } from './state'
@@ -11,7 +12,7 @@ function isWorldKnowledge(value: unknown): value is WorldKnowledge {
   return value === 'unknown' || isWorldShape(value)
 }
 
-export const SAVE_VERSION = 6
+export const SAVE_VERSION = 7
 export const STORAGE_KEY = 'uso-atlas:save'
 
 interface SaveData {
@@ -19,13 +20,13 @@ interface SaveData {
   intensity: string
   shape: string
   shapeAttempts: number
-  regions: Record<string, [number, number | null]>
+  regions: Record<string, [number, number | null, string[]]>
 }
 
 export function serialize(state: GameState): string {
   const regions: SaveData['regions'] = {}
   for (const [id, p] of Object.entries(state.regions)) {
-    if (p) regions[id] = [p.attempts, p.confirmedAttempt]
+    if (p) regions[id] = [p.attempts, p.confirmedAttempt, p.bridges ?? []]
   }
   return JSON.stringify({
     version: SAVE_VERSION,
@@ -52,10 +53,14 @@ export function parseSave(json: string): GameState | null {
     const validIds = new Set<string>(ALL_REGIONS)
     for (const [id, entry] of Object.entries(save.regions)) {
       if (!validIds.has(id) || !Array.isArray(entry)) return null
-      const [attempts, confirmedAttempt] = entry
+      const [attempts, confirmedAttempt, bridges] = entry
       if (typeof attempts !== 'number') return null
       if (confirmedAttempt !== null && typeof confirmedAttempt !== 'number') return null
-      regions[id as RegionId] = { attempts, confirmedAttempt }
+      if (!Array.isArray(bridges) || bridges.some((b) => typeof b !== 'string')) return null
+      regions[id as RegionId] =
+        bridges.length > 0
+          ? { attempts, confirmedAttempt, bridges: bridges as EdgeId[] }
+          : { attempts, confirmedAttempt }
     }
     // 航海・報告確認の途中でセーブされていてもidleに戻す（再派遣すれば同じ報告が出る）
     const state: GameState = {

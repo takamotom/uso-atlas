@@ -1,4 +1,6 @@
 // ゲーム状態の型定義とセレクタ。DOM非依存。
+import { cellEdges, neighborAcross } from '../map/edges'
+import type { EdgeId } from '../map/edges'
 import { ALL_REGIONS, START_REGION, neighbors } from '../map/regions'
 import type { RegionId, WorldShape } from '../map/regions'
 import { WORLD_EDGE_LAND_REGIONS } from '../map/world-data'
@@ -15,6 +17,8 @@ export interface RegionProgress {
   attempts: number
   /** 信じた報告のattempt番号。null = 未確定 */
   confirmedAttempt: number | null
+  /** 信じた報告に含まれていた陸橋（確定ジオメトリの再現に必要） */
+  bridges?: EdgeId[]
 }
 
 export type Phase =
@@ -81,6 +85,27 @@ export function requiresEdgeCrossing(state: GameState, id: RegionId): boolean {
 
 export function dispatchableRegions(state: GameState): RegionId[] {
   return ALL_REGIONS.filter((id) => canDispatch(state, id))
+}
+
+/**
+ * この海域の報告生成に使う陸橋コンテキスト。
+ * required = 隣が陸橋つきで確定済み（続きの陸が既成事実）、
+ * allowed = 隣が未確定（新しい陸橋をロールしてよい）。
+ * 隣が陸橋なしで確定済みの辺はどちらにも入らない（矛盾防止）
+ */
+export function bridgeContext(state: GameState, id: RegionId) {
+  const required: EdgeId[] = []
+  const allowed: EdgeId[] = []
+  for (const edge of cellEdges(id)) {
+    const neighbor = neighborAcross(id, edge)
+    if (!neighbor) continue
+    if (!isConfirmed(state, neighbor)) {
+      allowed.push(edge)
+    } else if (state.regions[neighbor]?.bridges?.includes(edge)) {
+      required.push(edge)
+    }
+  }
+  return { required, allowed }
 }
 
 /** 世界の果てに接する陸地が、確定済みの地図に既に描かれているか */
