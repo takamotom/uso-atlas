@@ -49,11 +49,14 @@ export function Hud({
         {state.phase.type === 'edgeReviewing' && '世界の果ての報告を信じますか？'}
         {complete && '世界地図、完成！'}
       </p>
-      {worldBadge && (
-        <span className="world-badge">
-          {worldBadge.icon} {worldBadge.label}
-        </span>
-      )}
+      {/* 確定前も不可視のまま場所を確保し、確定時に地図がずれないようにする */}
+      <span
+        className="world-badge"
+        style={worldBadge ? undefined : { visibility: 'hidden' }}
+        aria-hidden={!worldBadge}
+      >
+        {worldBadge ? `${worldBadge.icon} ${worldBadge.label}` : `${WORLD_BADGES.globe.icon} ${WORLD_BADGES.globe.label}`}
+      </span>
       <CaptainSelect value={state.intensity} onChange={onIntensityChange} />
       <div className="hud-buttons">
         <button

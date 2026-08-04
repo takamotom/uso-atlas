@@ -4,8 +4,11 @@ import { createRng } from './random'
 
 export type EdgeClaim = 'falls' | 'passage'
 
-/** 果ての報告が「滝（平面世界）」になる確率 */
-export const FALLS_PROBABILITY = 0.5
+/**
+ * 果ての報告が「滝（平面世界）」になる確率。
+ * 平面はレアな分岐にしたいので、陸が繋がっていない状態でも球体のほうが出やすい
+ */
+export const FALLS_PROBABILITY = 0.3
 
 export function edgeClaim(attempt: number): EdgeClaim {
   return createRng(`worldedge:${attempt}`)() < FALLS_PROBABILITY ? 'falls' : 'passage'

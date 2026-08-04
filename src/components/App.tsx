@@ -133,6 +133,7 @@ export default function App() {
         <ReportDialog
           regionId={state.phase.target}
           attempt={state.phase.attempt}
+          intensity={state.intensity}
           onBelieve={() => {
             playSfx('stamp')
             dispatch({ type: 'BELIEVE' })
