@@ -1,7 +1,7 @@
 // ページ下部のストーリー仕立てマニュアル
 export function ManualSection() {
   return (
-    <section className="manual" aria-label="遊び方">
+    <section className="manual" id="manual" aria-label="遊び方">
       <h2>―― 地図問屋『うそアトラス』開店の口上 ――</h2>
       <p>
         時は大航海のころ。あなたは日本の港町で地図問屋を営んでいる。

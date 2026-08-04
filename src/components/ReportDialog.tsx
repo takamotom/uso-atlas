@@ -1,3 +1,5 @@
+import { regionName } from '../map/region-names'
+import type { RegionId } from '../map/regions'
 import { createRng, pick } from '../report/random'
 
 const CAPTAIN_QUOTES = [
@@ -12,18 +14,18 @@ const CAPTAIN_QUOTES = [
 ]
 
 interface Props {
-  regionLabel: string
+  regionId: RegionId
   attempt: number
   onBelieve: () => void
   onReject: () => void
 }
 
-export function ReportDialog({ regionLabel, attempt, onBelieve, onReject }: Props) {
-  const quote = pick(createRng(`quote:${regionLabel}:${attempt}`), CAPTAIN_QUOTES)
+export function ReportDialog({ regionId, attempt, onBelieve, onReject }: Props) {
+  const quote = pick(createRng(`quote:${regionId}:${attempt}`), CAPTAIN_QUOTES)
   return (
     <div className="report-dialog" role="dialog" aria-label="船長の報告">
       <div className="report-header">
-        <span className="report-title">船長の報告</span>
+        <span className="report-title">船長の報告 — {regionName(regionId)}</span>
         <span className="report-attempt">{attempt + 1}度目の航海</span>
       </div>
       <p className="report-quote">「{quote}」</p>

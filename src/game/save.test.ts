@@ -1,5 +1,5 @@
 import { ALL_REGIONS, START_REGION } from '../map/regions'
-import { SAVE_VERSION, deserialize, serialize } from './save'
+import { SAVE_VERSION, STORAGE_KEY, deserialize, loadFromStorageWithNotice, serialize } from './save'
 import { TRUTH_ATTEMPT, initialState, isComplete } from './state'
 import type { GameState } from './state'
 
@@ -73,5 +73,38 @@ describe('serialize/deserialize', () => {
       regions: { 'r99-99': [1, 0] },
     })
     expect(deserialize(bad)).toEqual(initialState())
+  })
+})
+
+describe('loadFromStorageWithNotice', () => {
+  afterEach(() => localStorage.removeItem(STORAGE_KEY))
+
+  test('セーブが存在しないとき、読み込んだら、破棄通知なしで初期状態になるべき', () => {
+    localStorage.removeItem(STORAGE_KEY)
+    const result = loadFromStorageWithNotice()
+    expect(result.state).toEqual(initialState())
+    expect(result.discarded).toBe(false)
+  })
+
+  test('古いバージョンのセーブがあるとき、読み込んだら、破棄通知つきで初期状態になるべき', () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ version: SAVE_VERSION - 1, intensity: 'standard', regions: {} }),
+    )
+    const result = loadFromStorageWithNotice()
+    expect(result.state).toEqual(initialState())
+    expect(result.discarded).toBe(true)
+  })
+
+  test('有効なセーブがあるとき、読み込んだら、破棄通知なしで復元されるべき', () => {
+    const state: GameState = {
+      regions: { [START_REGION]: { attempts: 0, confirmedAttempt: TRUTH_ATTEMPT } },
+      phase: { type: 'idle' },
+      intensity: 'wild',
+    }
+    localStorage.setItem(STORAGE_KEY, serialize(state))
+    const result = loadFromStorageWithNotice()
+    expect(result.discarded).toBe(false)
+    expect(result.state.intensity).toBe('wild')
   })
 })

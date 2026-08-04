@@ -7,6 +7,9 @@ import { CaptainSelect } from './CaptainSelect'
 interface Props {
   state: GameState
   truthOverlay: boolean
+  muted: boolean
+  onToggleMute: () => void
+  onOpenLog: () => void
   onToggleTruthOverlay: () => void
   onExport: () => void
   onReset: () => void
@@ -16,6 +19,9 @@ interface Props {
 export function Hud({
   state,
   truthOverlay,
+  muted,
+  onToggleMute,
+  onOpenLog,
   onToggleTruthOverlay,
   onExport,
   onReset,
@@ -37,6 +43,16 @@ export function Hud({
       </p>
       <CaptainSelect value={state.intensity} onChange={onIntensityChange} />
       <div className="hud-buttons">
+        <button
+          type="button"
+          onClick={onToggleMute}
+          aria-label={muted ? '効果音をオンにする' : '効果音をオフにする'}
+        >
+          {muted ? '🔇' : '🔊'}
+        </button>
+        <button type="button" onClick={onOpenLog}>
+          記録帳
+        </button>
         {complete && (
           <button type="button" onClick={onToggleTruthOverlay}>
             {truthOverlay ? '答え合わせを消す' : '実際の地図と重ねる'}

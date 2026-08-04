@@ -24,40 +24,59 @@ export function serialize(state: GameState): string {
   return JSON.stringify({ version: SAVE_VERSION, intensity: state.intensity, regions })
 }
 
-/** 壊れたJSON・バージョン不一致・型不正は初期状態にフォールバックする */
-export function deserialize(json: string | null): GameState {
-  if (!json) return initialState()
+/** セーブJSONを解釈する。壊れたJSON・バージョン不一致・型不正は null（＝破棄）を返す */
+export function parseSave(json: string): GameState | null {
   try {
     const data: unknown = JSON.parse(json)
-    if (typeof data !== 'object' || data === null) return initialState()
+    if (typeof data !== 'object' || data === null) return null
     const save = data as Partial<SaveData>
-    if (save.version !== SAVE_VERSION) return initialState()
-    if (!isLieIntensity(save.intensity)) return initialState()
-    if (typeof save.regions !== 'object' || save.regions === null) return initialState()
+    if (save.version !== SAVE_VERSION) return null
+    if (!isLieIntensity(save.intensity)) return null
+    if (typeof save.regions !== 'object' || save.regions === null) return null
 
     const regions: Partial<Record<RegionId, RegionProgress>> = {}
     const validIds = new Set<string>(ALL_REGIONS)
     for (const [id, entry] of Object.entries(save.regions)) {
-      if (!validIds.has(id) || !Array.isArray(entry)) return initialState()
+      if (!validIds.has(id) || !Array.isArray(entry)) return null
       const [attempts, confirmedAttempt] = entry
-      if (typeof attempts !== 'number') return initialState()
-      if (confirmedAttempt !== null && typeof confirmedAttempt !== 'number') return initialState()
+      if (typeof attempts !== 'number') return null
+      if (confirmedAttempt !== null && typeof confirmedAttempt !== 'number') return null
       regions[id as RegionId] = { attempts, confirmedAttempt }
     }
     // 航海・報告確認の途中でセーブされていてもidleに戻す（再派遣すれば同じ報告が出る）
     const state: GameState = { regions, phase: { type: 'idle' }, intensity: save.intensity }
     return isComplete(state) ? { ...state, phase: { type: 'complete' } } : state
   } catch {
-    return initialState()
+    return null
+  }
+}
+
+export function deserialize(json: string | null): GameState {
+  if (!json) return initialState()
+  return parseSave(json) ?? initialState()
+}
+
+/** 破棄されたセーブがあった場合にユーザーへ通知するための読み込み結果 */
+export interface LoadResult {
+  state: GameState
+  /** true = セーブは存在したが古い版式・破損のため破棄して新規開始した */
+  discarded: boolean
+}
+
+export function loadFromStorageWithNotice(): LoadResult {
+  try {
+    const json = localStorage.getItem(STORAGE_KEY)
+    if (json === null) return { state: initialState(), discarded: false }
+    const parsed = parseSave(json)
+    if (parsed === null) return { state: initialState(), discarded: true }
+    return { state: parsed, discarded: false }
+  } catch {
+    return { state: initialState(), discarded: false }
   }
 }
 
 export function loadFromStorage(): GameState {
-  try {
-    return deserialize(localStorage.getItem(STORAGE_KEY))
-  } catch {
-    return initialState()
-  }
+  return loadFromStorageWithNotice().state
 }
 
 export function saveToStorage(state: GameState): void {
