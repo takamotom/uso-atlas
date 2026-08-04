@@ -7,7 +7,7 @@ import { isLieIntensity } from '../report/config'
 import { initialState, isComplete } from './state'
 import type { GameState, RegionProgress } from './state'
 
-export const SAVE_VERSION = 2
+export const SAVE_VERSION = 3
 export const STORAGE_KEY = 'uso-atlas:save'
 
 interface SaveData {

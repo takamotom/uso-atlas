@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ALL_REGIONS, regionBBox } from '../map/regions'
 import type { RegionId } from '../map/regions'
-import { INTENSITY_LABELS } from '../report/config'
+import { CAPTAIN_PROFILES } from '../report/config'
 import type { LieIntensity } from '../report/config'
 import { generateReport } from '../report/generate'
 import { PALETTE } from '../render/parchment'
@@ -72,11 +72,11 @@ export function GalleryView() {
         </select>
       </label>
       <label>
-        ホラ吹きレベル:
+        船長:
         <select value={intensity} onChange={(e) => setIntensity(e.target.value as LieIntensity)}>
-          {(Object.entries(INTENSITY_LABELS) as [LieIntensity, string][]).map(([value, label]) => (
+          {(Object.keys(CAPTAIN_PROFILES) as LieIntensity[]).map((value) => (
             <option key={value} value={value}>
-              {label}
+              {CAPTAIN_PROFILES[value].name}
             </option>
           ))}
         </select>

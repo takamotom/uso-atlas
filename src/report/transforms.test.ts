@@ -5,6 +5,7 @@ import { createRng } from './random'
 import {
   distortRings,
   fabricateIslands,
+  fabricateMegaContinent,
   marginOf,
   resampleRing,
   sinkRingToBorderStrips,
@@ -126,6 +127,41 @@ describe('fabricateIslands', () => {
       }
     }
     expect(sawContinent).toBe(true)
+  })
+})
+
+describe('fabricateMegaContinent', () => {
+  test('大陸盤の全頂点が、セル境界からmarginより離れているべき', () => {
+    const wildMargin = marginOf(bbox, INTENSITY_PRESETS.wild)
+    for (let trial = 0; trial < 15; trial++) {
+      const ring = fabricateMegaContinent(bbox, wildMargin, createRng(`mega-${trial}`))
+      for (const p of ring) {
+        expect(distToRectBorder(p, bbox)).toBeGreaterThan(wildMargin - 1e-9)
+      }
+    }
+  })
+
+  test('大陸盤が、生成されたとき、セル幅の7割以上を覆う巨大な陸地であるべき', () => {
+    for (let trial = 0; trial < 10; trial++) {
+      const ring = fabricateMegaContinent(bbox, 1.05, createRng(`mega-size-${trial}`))
+      const xs = ring.map(([x]) => x)
+      const ys = ring.map(([, y]) => y)
+      expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(30 * 0.7)
+      expect(Math.max(...ys) - Math.min(...ys)).toBeGreaterThan(30 * 0.7)
+    }
+  })
+
+  test('夢見る船長（wild）の捏造が、多数回試行したとき、大陸盤を生成する場合があるべき', () => {
+    const wild = INTENSITY_PRESETS.wild
+    let sawMega = false
+    for (let trial = 0; trial < 40; trial++) {
+      const out = fabricateIslands([], bbox, createRng(`mega-roll-${trial}`), wild)
+      for (const ring of out) {
+        const xs = ring.map(([x]) => x)
+        if (Math.max(...xs) - Math.min(...xs) > 30 * 0.7) sawMega = true
+      }
+    }
+    expect(sawMega).toBe(true)
   })
 })
 

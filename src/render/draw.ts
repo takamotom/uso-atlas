@@ -5,6 +5,7 @@ import type { RegionId } from '../map/regions'
 import { confirmedGeometry } from '../game/confirmed-geometry'
 import { canDispatch, isConfirmed } from '../game/state'
 import type { GameState } from '../game/state'
+import { truthGeometry } from '../map/world-data'
 import { createNoise2D } from '../report/noise'
 import { PALETTE } from './parchment'
 import type { ViewTransform } from './transform'
@@ -63,6 +64,18 @@ export function fogCellPath(id: RegionId, vt: ViewTransform): Path2D {
   return path
 }
 
+/** 実際の地球の海岸線を青破線で重ねる（完成後の答え合わせ用） */
+export function drawTruthOverlay(ctx: CanvasRenderingContext2D, vt: ViewTransform): void {
+  ctx.save()
+  ctx.strokeStyle = 'rgba(36, 74, 133, 0.7)'
+  ctx.setLineDash([5, 3])
+  ctx.lineWidth = Math.max(1, vt.scale * 0.3)
+  for (const id of ALL_REGIONS) {
+    ctx.stroke(ringsToPath(truthGeometry(id), vt))
+  }
+  ctx.restore()
+}
+
 export interface SceneOptions {
   vt: ViewTransform
   base: CanvasImageSource
@@ -71,6 +84,8 @@ export interface SceneOptions {
   /** reviewing中の報告プレビュー */
   preview: { region: RegionId; geometry: Ring[] } | null
   shipPos: Point | null
+  /** 実際の世界地図を重ねる答え合わせ表示 */
+  truthOverlay: boolean
 }
 
 export function drawScene(ctx: CanvasRenderingContext2D, o: SceneOptions): void {
@@ -82,6 +97,8 @@ export function drawScene(ctx: CanvasRenderingContext2D, o: SceneOptions): void 
     if (p?.confirmedAttempt != null)
       drawLand(ctx, confirmedGeometry(id, p.confirmedAttempt, state.intensity), vt)
   }
+
+  if (o.truthOverlay) drawTruthOverlay(ctx, vt)
 
   // 霧（プレビュー対象セルは霧を剥がして見せる）
   for (const id of ALL_REGIONS) {

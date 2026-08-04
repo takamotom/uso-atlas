@@ -8,9 +8,10 @@ interface Props {
   onExport: () => void
   onReset: () => void
   onClose: () => void
+  onCompare: () => void
 }
 
-export function CompleteScreen({ state, onExport, onReset, onClose }: Props) {
+export function CompleteScreen({ state, onExport, onReset, onClose, onCompare }: Props) {
   const lieCount = useMemo(
     () =>
       ALL_REGIONS.filter((id) => {
@@ -40,6 +41,9 @@ export function CompleteScreen({ state, onExport, onReset, onClose }: Props) {
               : '現実と嘘が入り混じった、あなただけの世界です。'}
         </p>
         <div className="report-buttons">
+          <button type="button" onClick={onCompare}>
+            実際の地図と見比べる
+          </button>
           <button type="button" onClick={onExport}>
             地図をPNGで保存
           </button>

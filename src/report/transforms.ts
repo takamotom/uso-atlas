@@ -116,7 +116,43 @@ function blobIsland(center: Point, radius: number, clamp: number, rng: Rng): Rin
   return ring
 }
 
-/** (b) 捏造: 存在しない島（まれにムー大陸級）を追加。境界帯には配置しない */
+/**
+ * 大陸盤: 海域の内側（境界帯を除く）をほぼ埋め尽くす超巨大大陸。
+ * セル中心からの放射で内接矩形（境界からmarginだけ内側）の縁までの距離を上限に、
+ * ノイズで縁を波打たせた形にする。全頂点は必ず境界からmargin超に収まる。
+ */
+export function fabricateMegaContinent(bbox: BBox, margin: number, rng: Rng): Ring {
+  const cx = (bbox.x0 + bbox.x1) / 2
+  const cy = (bbox.y0 + bbox.y1) / 2
+  const halfW = (bbox.x1 - bbox.x0) / 2 - margin * 1.05
+  const halfH = (bbox.y1 - bbox.y0) / 2 - margin * 1.05
+  const harmonics = [2, 3, 5, 8].map((k) => ({
+    k,
+    amp: rollRange(rng, 0, 0.4 / Math.sqrt(k)),
+    phase: rollRange(rng, 0, Math.PI * 2),
+  }))
+  const n = 72
+  const ring: Point[] = []
+  for (let i = 0; i < n; i++) {
+    const theta = (i / n) * Math.PI * 2
+    const cos = Math.cos(theta)
+    const sin = Math.sin(theta)
+    // 中心から内接矩形の縁までの距離（この方向の最大半径）
+    const rectR = Math.min(
+      cos !== 0 ? halfW / Math.abs(cos) : Infinity,
+      sin !== 0 ? halfH / Math.abs(sin) : Infinity,
+    )
+    let noise = 0
+    for (const h of harmonics) noise += h.amp * Math.sin(h.k * theta + h.phase)
+    // 縁の97%を上限に、ノイズぶんだけ内側へ波打たせる（湾や半島になる）
+    const inward = 0.03 + 0.27 * Math.min(1, Math.abs(noise))
+    const r = rectR * (1 - inward)
+    ring.push([cx + r * cos, cy + r * sin])
+  }
+  return ring
+}
+
+/** (b) 捏造: 存在しない島・ムー大陸級・大陸盤を追加。境界帯には配置しない */
 export function fabricateIslands(
   rings: Ring[],
   bbox: BBox,
@@ -125,6 +161,9 @@ export function fabricateIslands(
 ): Ring[] {
   const w = cellWidth(bbox)
   const margin = marginOf(bbox, preset)
+  if (rng() < preset.megaContinentProbability) {
+    return [...rings, fabricateMegaContinent(bbox, margin, rng)]
+  }
   const continent = rng() < preset.continentProbability
   const count = continent ? 1 : rollInt(rng, preset.fabricateCount.min, preset.fabricateCount.max)
   const added: Ring[] = []

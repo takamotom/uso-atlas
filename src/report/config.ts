@@ -2,13 +2,35 @@
 // 注意: プリセット値や生成アルゴリズムを変更すると同じセーブデータから再現される
 // 地形が変わるため、変更時は game/save.ts の SAVE_VERSION を上げること。
 
-/** ホラ吹きレベル。航海開始時に固定され、途中変更は新しい航海になる */
+/**
+ * 船長のタイプ（＝報告の性質）。航海開始時に固定され、途中変更は新しい航海になる。
+ * 内部値はセーブ互換のため据え置き（mild/standard/wild）。
+ */
 export type LieIntensity = 'mild' | 'standard' | 'wild'
 
-export const INTENSITY_LABELS: Record<LieIntensity, string> = {
-  mild: '控えめ',
-  standard: '標準',
-  wild: '大ボラ',
+export interface CaptainProfile {
+  icon: string
+  name: string
+  /** ドロップダウンに出す一言説明 */
+  description: string
+}
+
+export const CAPTAIN_PROFILES: Record<LieIntensity, CaptainProfile> = {
+  mild: {
+    icon: '🧭',
+    name: '実直な船長',
+    description: '見たままを正確に描く熟練の航海士。報告はほぼ真実。',
+  },
+  standard: {
+    icon: '⚓',
+    name: '気まぐれな船長',
+    description: '腕は確かだが、酒と想像がほどよく混じる。',
+  },
+  wild: {
+    icon: '🌋',
+    name: '夢見る船長',
+    description: '幻の大陸を追うロマンの人。報告は壮大で、大陸が浮かび、沈む。',
+  },
 }
 
 export interface LiePreset {
@@ -31,6 +53,8 @@ export interface LiePreset {
   continentRadius: number
   /** ブロブ半径の最大倍率（大陸はセルに収めるため控えめにする） */
   continentClamp: number
+  /** 大陸盤（海域をほぼ埋め尽くす超巨大大陸）が起きる確率。隣接海域と海峡1本で繋がって見える */
+  megaContinentProbability: number
   /** 消失変換で内陸リングが削除される確率 */
   vanishProbability: number
   /** 境界接続の大陸が「沈没」する（境界の残骸だけ残して消える）確率 */
@@ -54,6 +78,7 @@ export const INTENSITY_PRESETS: Record<LieIntensity, LiePreset> = {
     continentProbability: 0.04,
     continentRadius: 0.18,
     continentClamp: 1.4,
+    megaContinentProbability: 0,
     vanishProbability: 0.5,
     totalVanishProbability: 0,
     erodeStrength: { min: 0.2, max: 0.4 },
@@ -71,23 +96,26 @@ export const INTENSITY_PRESETS: Record<LieIntensity, LiePreset> = {
     continentProbability: 0.15,
     continentRadius: 0.24,
     continentClamp: 1.4,
+    megaContinentProbability: 0,
     vanishProbability: 0.8,
     totalVanishProbability: 0,
     erodeStrength: { min: 0.3, max: 0.6 },
     lieOpCount: { min: 1, max: 2 },
   },
-  // 大ボラ: ムー大陸が浮上し、オーストラリアが沈む世界
+  // 夢見る船長: ムー大陸が浮上し、オーストラリアが沈む世界。
+  // 境界帯を細くして、隣接海域の大陸盤同士が狭い海峡だけで隔てられて「繋がって」見えるようにする
   wild: {
     truthProbability: 0.25,
-    marginRatio: 0.05,
+    marginRatio: 0.035,
     resampleRatio: 0.015,
     distortAmp: { min: 0.15, max: 0.35 },
     distortWavelengthRatio: 0.4,
     fabricateCount: { min: 2, max: 6 },
-    islandRadius: { min: 0.05, max: 0.2 },
-    continentProbability: 0.35,
+    islandRadius: { min: 0.07, max: 0.22 },
+    continentProbability: 0.25,
     continentRadius: 0.3,
     continentClamp: 1.3,
+    megaContinentProbability: 0.3,
     vanishProbability: 0.9,
     totalVanishProbability: 0.5,
     erodeStrength: { min: 0.5, max: 0.9 },

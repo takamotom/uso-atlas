@@ -6,6 +6,7 @@ import { exportMapPng } from '../render/export'
 import { CompleteScreen } from './CompleteScreen'
 import { GalleryView } from './GalleryView'
 import { Hud } from './Hud'
+import { ManualSection } from './ManualSection'
 import { MapCanvas } from './MapCanvas'
 import { ReportDialog } from './ReportDialog'
 
@@ -13,6 +14,7 @@ export default function App() {
   const [state, dispatch] = useGame()
   // 完成画面を「地図を眺める」で閉じた後は再表示しない（リセットで復活）
   const [completeDismissed, setCompleteDismissed] = useState(false)
+  const [truthOverlay, setTruthOverlay] = useState(false)
   const shipPos = useShipAnimation(state.phase, () => dispatch({ type: 'ARRIVED' }))
 
   const isComplete = state.phase.type === 'complete'
@@ -30,15 +32,21 @@ export default function App() {
     <div className="app">
       <Hud
         state={state}
+        truthOverlay={truthOverlay}
+        onToggleTruthOverlay={() => setTruthOverlay((v) => !v)}
         onExport={() => exportMapPng(state)}
-        onReset={() => dispatch({ type: 'RESET' })}
+        onReset={() => {
+          setTruthOverlay(false)
+          dispatch({ type: 'RESET' })
+        }}
         onIntensityChange={(intensity) => {
           if (intensity === state.intensity) return
           const started = Object.keys(state.regions).length > 1
           if (
             !started ||
-            window.confirm('ホラ吹きレベルを変えると、いまの地図を消して新しい航海が始まります。よろしいですか？')
+            window.confirm('船長を替えると、いまの地図を消して新しい航海が始まります。よろしいですか？')
           ) {
+            setTruthOverlay(false)
             dispatch({ type: 'RESET', intensity })
           }
         }}
@@ -47,6 +55,7 @@ export default function App() {
         state={state}
         preview={preview}
         shipPos={shipPos}
+        truthOverlay={isComplete && truthOverlay}
         onRegionClick={(id) => dispatch({ type: 'DISPATCH', target: id })}
       />
       {state.phase.type === 'reviewing' && (
@@ -63,11 +72,17 @@ export default function App() {
           onExport={() => exportMapPng(state)}
           onReset={() => {
             setCompleteDismissed(false)
+            setTruthOverlay(false)
             dispatch({ type: 'RESET' })
           }}
           onClose={() => setCompleteDismissed(true)}
+          onCompare={() => {
+            setTruthOverlay(true)
+            setCompleteDismissed(true)
+          }}
         />
       )}
+      <ManualSection />
     </div>
   )
 }

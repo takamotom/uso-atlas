@@ -12,10 +12,11 @@ interface Props {
   state: GameState
   preview: { region: RegionId; geometry: Ring[] } | null
   shipPos: Point | null
+  truthOverlay: boolean
   onRegionClick: (id: RegionId) => void
 }
 
-export function MapCanvas({ state, preview, shipPos, onRegionClick }: Props) {
+export function MapCanvas({ state, preview, shipPos, truthOverlay, onRegionClick }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const baseRef = useRef<HTMLCanvasElement | null>(null)
@@ -57,8 +58,8 @@ export function MapCanvas({ state, preview, shipPos, onRegionClick }: Props) {
 
     const ctx = canvas.getContext('2d')!
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    drawScene(ctx, { vt, base: baseRef.current, state, hover, preview, shipPos })
-  }, [vt, state, hover, preview, shipPos])
+    drawScene(ctx, { vt, base: baseRef.current, state, hover, preview, shipPos, truthOverlay })
+  }, [vt, state, hover, preview, shipPos, truthOverlay])
 
   function regionFromEvent(e: React.MouseEvent<HTMLCanvasElement>): RegionId | null {
     const rect = e.currentTarget.getBoundingClientRect()
