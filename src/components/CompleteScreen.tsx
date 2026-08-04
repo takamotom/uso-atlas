@@ -40,11 +40,12 @@ export function CompleteScreen({ state, onExport, onReset, onClose, onCompare }:
               ? 'もはや別の惑星。素晴らしい荒唐無稽っぷりです。'
               : '現実と嘘が入り混じった、あなただけの世界です。'}
         </p>
-        <p className="complete-sub">
-          {state.worldShape === 'flat' && 'そしてこの世界は、海が縁から流れ落ちる平面の盤でした。'}
-          {state.worldShape === 'globe' && 'そしてこの世界は、ぐるりと一周できる球体でした。'}
-          {state.worldShape === 'unknown' && 'そして世界のかたちは——誰も果てを確かめないまま、謎として残されました。'}
-        </p>
+        {/* 世界のかたちは平面（隠し要素）のときだけ特筆する。それ以外は当たり前の球体 */}
+        {state.worldShape === 'flat' && (
+          <p className="complete-sub">
+            そしてこの世界は、海が縁から流れ落ちる平面の盤でした。
+          </p>
+        )}
         <div className="report-buttons">
           <button type="button" onClick={onCompare}>
             実際の地図と見比べる

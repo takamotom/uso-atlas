@@ -38,53 +38,64 @@ export function Hud({
   const worldBadge = state.worldShape === 'unknown' ? null : WORLD_BADGES[state.worldShape]
   return (
     <header className="hud">
-      <h1 className="hud-title">うそアトラス</h1>
-      <p className="hud-progress">
-        確定海域 {count} / {ALL_REGIONS.length}
-      </p>
-      <p className="hud-hint">
-        {state.phase.type === 'idle' && '点線の海域をクリックして船を派遣'}
-        {state.phase.type === 'sailing' && '航海中……'}
-        {state.phase.type === 'reviewing' && '船長の報告を信じますか？'}
-        {state.phase.type === 'edgeReviewing' && '世界の果ての報告を信じますか？'}
-        {complete && '世界地図、完成！'}
-      </p>
-      {/* 確定前も不可視のまま場所を確保し、確定時に地図がずれないようにする */}
-      <span
-        className="world-badge"
-        style={worldBadge ? undefined : { visibility: 'hidden' }}
-        aria-hidden={!worldBadge}
-      >
-        {worldBadge ? `${worldBadge.icon} ${worldBadge.label}` : `${WORLD_BADGES.globe.icon} ${WORLD_BADGES.globe.label}`}
-      </span>
-      <CaptainSelect value={state.intensity} onChange={onIntensityChange} />
-      <div className="hud-buttons">
-        <button
-          type="button"
-          onClick={onToggleMute}
-          aria-label={muted ? '効果音をオンにする' : '効果音をオフにする'}
+      <div className="hud-row">
+        <h1 className="hud-title">うそアトラス</h1>
+        <p className="hud-progress">
+          確定海域 {count} / {ALL_REGIONS.length}
+        </p>
+        <p className="hud-hint">
+          {state.phase.type === 'idle' && '点線の海域をクリックして船を派遣'}
+          {state.phase.type === 'sailing' && '航海中……'}
+          {state.phase.type === 'reviewing' && '船長の報告を信じますか？'}
+          {state.phase.type === 'edgeReviewing' && '世界の果ての報告を信じますか？'}
+          {complete && '世界地図、完成！'}
+        </p>
+      </div>
+      <div className="hud-row hud-row-controls">
+        {/* 出現・消滅で高さが変わらないよう、非表示時も場所を確保する */}
+        <span
+          className="world-badge"
+          style={worldBadge ? undefined : { visibility: 'hidden' }}
+          aria-hidden={!worldBadge}
         >
-          {muted ? '🔇' : '🔊'}
-        </button>
-        <button type="button" onClick={onOpenLog}>
-          記録帳
-        </button>
-        {complete && (
-          <button type="button" onClick={onToggleTruthOverlay}>
+          {worldBadge
+            ? `${worldBadge.icon} ${worldBadge.label}`
+            : `${WORLD_BADGES.globe.icon} ${WORLD_BADGES.globe.label}`}
+        </span>
+        <span className="hud-spacer" />
+        <CaptainSelect value={state.intensity} onChange={onIntensityChange} />
+        <div className="hud-buttons">
+          <button
+            type="button"
+            onClick={onToggleMute}
+            aria-label={muted ? '効果音をオンにする' : '効果音をオフにする'}
+          >
+            {muted ? '🔇' : '🔊'}
+          </button>
+          <button type="button" onClick={onOpenLog}>
+            記録帳
+          </button>
+          <button
+            type="button"
+            style={complete ? undefined : { visibility: 'hidden' }}
+            aria-hidden={!complete}
+            tabIndex={complete ? 0 : -1}
+            onClick={complete ? onToggleTruthOverlay : undefined}
+          >
             {truthOverlay ? '答え合わせを消す' : '実際の地図と重ねる'}
           </button>
-        )}
-        <button type="button" onClick={onExport}>
-          地図を保存
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            if (window.confirm('地図を消して最初からやり直しますか？')) onReset()
-          }}
-        >
-          最初から
-        </button>
+          <button type="button" onClick={onExport}>
+            地図を保存
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm('地図を消して最初からやり直しますか？')) onReset()
+            }}
+          >
+            最初から
+          </button>
+        </div>
       </div>
     </header>
   )
