@@ -131,6 +131,12 @@ export const INTENSITY_PRESETS: Record<LieIntensity, LiePreset> = {
   },
 }
 
+/**
+ * 陸被覆率がこれを超える海域は「内陸」とみなし、嘘を湖変換に切り替える。
+ * 内陸セルに消失・沈没をかけるとセル境界に沿った四角い海ができてしまうため
+ */
+export const INLAND_LAND_RATIO = 0.7
+
 export const DEFAULT_INTENSITY: LieIntensity = 'standard'
 
 export function isLieIntensity(value: unknown): value is LieIntensity {

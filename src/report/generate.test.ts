@@ -1,8 +1,8 @@
 import { distToRectBorder, distToRingOutline } from '../map/geo'
 import type { Point, Ring } from '../map/geo'
 import { ALL_REGIONS, START_REGION, regionBBox } from '../map/regions'
-import { truthGeometry } from '../map/world-data'
-import { INTENSITY_PRESETS } from './config'
+import { landRatio, truthGeometry } from '../map/world-data'
+import { INLAND_LAND_RATIO, INTENSITY_PRESETS } from './config'
 import type { LieIntensity } from './config'
 import { FORCED_TRUTH_ATTEMPT, generateReport } from './generate'
 import { marginOf } from './transforms'
@@ -38,6 +38,21 @@ describe('generateReport', () => {
       Array.from({ length: 30 }, (_, attempt) => generateReport('r6-1', attempt).kind),
     )
     expect(kinds).toEqual(new Set(['truth', 'lie']))
+  })
+
+  test('内陸の海域の嘘報告が、生成されたとき、湖変換のみで構成されるべき（四角い海の防止）', () => {
+    const inland = ALL_REGIONS.find((id) => landRatio(id) > INLAND_LAND_RATIO)
+    expect(inland).toBeDefined()
+    let sawLie = false
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const report = generateReport(inland!, attempt)
+      if (report.kind === 'lie') {
+        sawLie = true
+        expect(report.lieOps).toEqual(['lake'])
+        expect(report.geometry.length).toBeGreaterThan(truthGeometry(inland!).length)
+      }
+    }
+    expect(sawLie).toBe(true)
   })
 
   test('陸地のない海域の嘘報告が、生成されたとき、捏造のみで構成されるべき', () => {

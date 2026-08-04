@@ -2,17 +2,17 @@
 import type { Ring } from '../map/geo'
 import { regionBBox } from '../map/regions'
 import type { RegionId } from '../map/regions'
-import { truthGeometry } from '../map/world-data'
-import { DEFAULT_INTENSITY, INTENSITY_PRESETS } from './config'
+import { landRatio, truthGeometry } from '../map/world-data'
+import { DEFAULT_INTENSITY, INLAND_LAND_RATIO, INTENSITY_PRESETS } from './config'
 import type { LieIntensity, LiePreset } from './config'
 import { createRng, rollInt } from './random'
 import type { Rng } from './random'
-import { distortRings, fabricateIslands, vanishRings } from './transforms'
+import { carveLakes, distortRings, fabricateIslands, vanishRings } from './transforms'
 
 /** game/state.ts の TRUTH_ATTEMPT と同値。循環importを避けるためここにも定義 */
 export const FORCED_TRUTH_ATTEMPT = -1
 
-export type LieOp = 'distort' | 'fabricate' | 'vanish'
+export type LieOp = 'distort' | 'fabricate' | 'vanish' | 'lake'
 
 export interface Report {
   kind: 'truth' | 'lie'
@@ -20,9 +20,11 @@ export interface Report {
   geometry: Ring[]
 }
 
-function chooseLieOps(rng: Rng, hasLand: boolean, preset: LiePreset): LieOp[] {
+function chooseLieOps(rng: Rng, hasLand: boolean, inland: boolean, preset: LiePreset): LieOp[] {
   // 陸地のない海域では歪み・消失に意味がないため捏造のみ
   if (!hasLand) return ['fabricate']
+  // 内陸セルで消失・沈没を使うとセル境界沿いの四角い海ができるため、湖を穿つ嘘に切り替える
+  if (inland) return ['lake']
   const count = rollInt(rng, preset.lieOpCount.min, preset.lieOpCount.max)
   const pool: LieOp[] = ['distort', 'fabricate', 'vanish']
   const ops: LieOp[] = []
@@ -50,11 +52,12 @@ export function generateReport(
   if (rng() < preset.truthProbability) return { kind: 'truth', lieOps: [], geometry: truth }
 
   const bbox = regionBBox(id)
-  const ops = chooseLieOps(rng, truth.length > 0, preset)
+  const ops = chooseLieOps(rng, truth.length > 0, landRatio(id) > INLAND_LAND_RATIO, preset)
   let geometry = truth
   for (const op of ops) {
     if (op === 'vanish') geometry = vanishRings(geometry, bbox, rng, preset, seed)
     else if (op === 'distort') geometry = distortRings(geometry, bbox, rng, seed, preset)
+    else if (op === 'lake') geometry = carveLakes(geometry, bbox, rng, preset)
     else geometry = fabricateIslands(geometry, bbox, rng, preset)
   }
   return { kind: 'lie', lieOps: ops, geometry }

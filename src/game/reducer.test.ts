@@ -131,4 +131,24 @@ describe('RESET', () => {
     const s = reducer(wildState, { type: 'RESET' })
     expect(s.intensity).toBe('wild')
   })
+
+  test('世界のかたち指定つきでリセットしたとき、平面世界の初期状態になるべき', () => {
+    const s = reducer(initialState(), { type: 'RESET', worldShape: 'flat' })
+    expect(s.worldShape).toBe('flat')
+    expect(s).toEqual(initialState('standard', 'flat'))
+  })
+})
+
+describe('平面世界の探索', () => {
+  test('平面世界で東端だけ確定しているとき、西端の海域が、派遣可能にならないべき', () => {
+    const base = initialState('standard', 'flat')
+    const eastConfirmed: GameState = {
+      ...base,
+      regions: { ...base.regions, 'r11-2': { attempts: 1, confirmedAttempt: 0 } },
+    }
+    expect(canDispatch(eastConfirmed, 'r0-2')).toBe(false)
+    // 球体世界なら同じ状況で派遣可能
+    const globeVersion: GameState = { ...eastConfirmed, worldShape: 'globe' }
+    expect(canDispatch(globeVersion, 'r0-2')).toBe(true)
+  })
 })

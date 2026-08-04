@@ -202,6 +202,33 @@ export function touchesBorder(ring: Ring, bbox: BBox, margin: number): boolean {
 }
 
 /**
+ * (d) 湖: 内陸セル用の嘘。陸に有機的なブロブの湖を穿つ。
+ * 湖リングは陸と逆巻きにして、nonzero塗りで穴として描画される。
+ * 境界帯には配置しないので継ぎ目保証を満たす
+ */
+export function carveLakes(rings: Ring[], bbox: BBox, rng: Rng, preset: LiePreset): Ring[] {
+  if (rings.length === 0) return rings
+  const w = cellWidth(bbox)
+  const margin = marginOf(bbox, preset)
+  const largest = rings.reduce((best, r) =>
+    Math.abs(ringArea(r)) > Math.abs(ringArea(best)) ? r : best,
+  )
+  const landOrientation = Math.sign(ringArea(largest)) || 1
+  const count = rollInt(rng, 1, 3)
+  const lakes: Ring[] = []
+  for (let i = 0; i < count; i++) {
+    const radius = rollRange(rng, preset.islandRadius.min, preset.islandRadius.max) * w
+    const clearance = margin + radius * 1.5
+    const cx = rollRange(rng, bbox.x0 + clearance, bbox.x1 - clearance)
+    const cy = rollRange(rng, bbox.y0 + clearance, bbox.y1 - clearance)
+    const blob = blobIsland([cx, cy], radius, 1.5, rng)
+    // 陸と同じ巻き方向なら反転して穴にする
+    lakes.push(Math.sign(ringArea(blob)) === landOrientation ? [...blob].reverse() : blob)
+  }
+  return [...rings, ...lakes]
+}
+
+/**
  * 沈没: リングをセル境界沿いの帯（幅margin）だけ残してクリップする。
  * 大陸の本体が海に沈み、境界を跨ぐ部分の残骸（岩礁）だけが残る。
  * 帯内の頂点は元の輪郭線上（クリップの切り口は帯の内縁=margin線上）なので継ぎ目保証を満たす。

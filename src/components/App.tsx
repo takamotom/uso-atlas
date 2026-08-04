@@ -89,6 +89,17 @@ export default function App() {
             dispatch({ type: 'RESET', intensity })
           }
         }}
+        onWorldShapeChange={(worldShape) => {
+          if (worldShape === state.worldShape) return
+          const started = Object.keys(state.regions).length > 1
+          if (
+            !started ||
+            window.confirm('世界のかたちを変えると、いまの地図を消して新しい航海が始まります。よろしいですか？')
+          ) {
+            setTruthOverlay(false)
+            dispatch({ type: 'RESET', worldShape })
+          }
+        }}
       />
       {saveDiscarded && !noticeDismissed && (
         <div className="notice-banner" role="status">

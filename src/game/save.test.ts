@@ -13,6 +13,7 @@ describe('serialize/deserialize', () => {
       },
       phase: { type: 'idle' },
       intensity: 'standard',
+      worldShape: 'globe',
     }
     const restored = deserialize(serialize(state))
     expect(restored.regions).toEqual(state.regions)
@@ -24,12 +25,13 @@ describe('serialize/deserialize', () => {
       regions: { [START_REGION]: { attempts: 0, confirmedAttempt: TRUTH_ATTEMPT } },
       phase: { type: 'idle' },
       intensity: 'wild',
+      worldShape: 'flat',
     }
     expect(deserialize(serialize(state)).intensity).toBe('wild')
   })
 
   test('不正なレベルを含むセーブを読み込んだとき、初期状態を返すべき', () => {
-    const bad = JSON.stringify({ version: SAVE_VERSION, intensity: 'insane', regions: {} })
+    const bad = JSON.stringify({ version: SAVE_VERSION, intensity: 'insane', shape: 'globe', regions: {} })
     expect(deserialize(bad)).toEqual(initialState())
   })
 
@@ -38,6 +40,7 @@ describe('serialize/deserialize', () => {
       regions: { [START_REGION]: { attempts: 0, confirmedAttempt: TRUTH_ATTEMPT } },
       phase: { type: 'reviewing', target: 'r6-1', attempt: 0 },
       intensity: 'standard',
+      worldShape: 'globe',
     }
     expect(deserialize(serialize(state)).phase).toEqual({ type: 'idle' })
   })
@@ -49,6 +52,7 @@ describe('serialize/deserialize', () => {
       ),
       phase: { type: 'idle' },
       intensity: 'standard',
+      worldShape: 'globe',
     }
     const restored = deserialize(serialize(state))
     expect(isComplete(restored)).toBe(true)
@@ -62,14 +66,25 @@ describe('serialize/deserialize', () => {
   })
 
   test('バージョンが異なるセーブを読み込んだとき、初期状態を返すべき', () => {
-    const old = JSON.stringify({ version: SAVE_VERSION + 1, intensity: 'standard', regions: {} })
+    const old = JSON.stringify({ version: SAVE_VERSION + 1, intensity: 'standard', shape: 'globe', regions: {} })
     expect(deserialize(old)).toEqual(initialState())
+  })
+
+  test('不正な世界のかたちを含むセーブを読み込んだとき、初期状態を返すべき', () => {
+    const bad = JSON.stringify({
+      version: SAVE_VERSION,
+      intensity: 'standard',
+      shape: 'donut',
+      regions: {},
+    })
+    expect(deserialize(bad)).toEqual(initialState())
   })
 
   test('存在しない海域IDを含むセーブを読み込んだとき、初期状態を返すべき', () => {
     const bad = JSON.stringify({
       version: SAVE_VERSION,
       intensity: 'standard',
+      shape: 'globe',
       regions: { 'r99-99': [1, 0] },
     })
     expect(deserialize(bad)).toEqual(initialState())
@@ -89,7 +104,7 @@ describe('loadFromStorageWithNotice', () => {
   test('古いバージョンのセーブがあるとき、読み込んだら、破棄通知つきで初期状態になるべき', () => {
     localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ version: SAVE_VERSION - 1, intensity: 'standard', regions: {} }),
+      JSON.stringify({ version: SAVE_VERSION - 1, intensity: 'standard', shape: 'globe', regions: {} }),
     )
     const result = loadFromStorageWithNotice()
     expect(result.state).toEqual(initialState())
@@ -101,10 +116,12 @@ describe('loadFromStorageWithNotice', () => {
       regions: { [START_REGION]: { attempts: 0, confirmedAttempt: TRUTH_ATTEMPT } },
       phase: { type: 'idle' },
       intensity: 'wild',
+      worldShape: 'flat',
     }
     localStorage.setItem(STORAGE_KEY, serialize(state))
     const result = loadFromStorageWithNotice()
     expect(result.discarded).toBe(false)
     expect(result.state.intensity).toBe('wild')
+    expect(result.state.worldShape).toBe('flat')
   })
 })

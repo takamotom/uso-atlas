@@ -1,6 +1,6 @@
 // ゲーム状態の型定義とセレクタ。DOM非依存。
-import { ALL_REGIONS, START_REGION, neighbors } from '../map/regions'
-import type { RegionId } from '../map/regions'
+import { ALL_REGIONS, DEFAULT_WORLD_SHAPE, START_REGION, neighbors } from '../map/regions'
+import type { RegionId, WorldShape } from '../map/regions'
 import { DEFAULT_INTENSITY } from '../report/config'
 import type { LieIntensity } from '../report/config'
 
@@ -23,15 +23,21 @@ export type Phase =
 export interface GameState {
   regions: Partial<Record<RegionId, RegionProgress>>
   phase: Phase
-  /** ホラ吹きレベル。確定地形の再現に関わるため航海の途中では変更できない */
+  /** 船長のタイプ。確定地形の再現に関わるため航海の途中では変更できない */
   intensity: LieIntensity
+  /** 世界のかたち。探索の繋がりが変わるため航海の途中では変更できない */
+  worldShape: WorldShape
 }
 
-export function initialState(intensity: LieIntensity = DEFAULT_INTENSITY): GameState {
+export function initialState(
+  intensity: LieIntensity = DEFAULT_INTENSITY,
+  worldShape: WorldShape = DEFAULT_WORLD_SHAPE,
+): GameState {
   return {
     regions: { [START_REGION]: { attempts: 0, confirmedAttempt: TRUTH_ATTEMPT } },
     phase: { type: 'idle' },
     intensity,
+    worldShape,
   }
 }
 
@@ -39,11 +45,11 @@ export function isConfirmed(state: GameState, id: RegionId): boolean {
   return state.regions[id]?.confirmedAttempt != null
 }
 
-/** 派遣可能 = idle中・未確定・4近傍に確定済み海域あり */
+/** 派遣可能 = idle中・未確定・近傍（世界のかたちに応じた）に確定済み海域あり */
 export function canDispatch(state: GameState, id: RegionId): boolean {
   if (state.phase.type !== 'idle') return false
   if (isConfirmed(state, id)) return false
-  return neighbors(id).some((n) => isConfirmed(state, n))
+  return neighbors(id, state.worldShape).some((n) => isConfirmed(state, n))
 }
 
 export function dispatchableRegions(state: GameState): RegionId[] {

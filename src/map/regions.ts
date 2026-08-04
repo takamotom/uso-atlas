@@ -29,13 +29,31 @@ export function regionBBox(id: RegionId): BBox {
   return { x0, y0: y1 - LAT_STEP, x1: x0 + LON_STEP, y1 }
 }
 
-/** 上下左右の4近傍。東西はmod 12でラップ（地球一周可）、南北はラップなし */
-export function neighbors(id: RegionId): RegionId[] {
+/**
+ * 世界のかたち。globe=球体（東西がラップして地球一周できる）、
+ * flat=平面（東西の果ては繋がっておらず、海水が縁から流れ落ちている）
+ */
+export type WorldShape = 'globe' | 'flat'
+
+export const DEFAULT_WORLD_SHAPE: WorldShape = 'globe'
+
+export function isWorldShape(value: unknown): value is WorldShape {
+  return value === 'globe' || value === 'flat'
+}
+
+/**
+ * 上下左右の4近傍。南北はラップなし。
+ * 東西は球体世界ではmod 12でラップし、平面世界では世界の果てで途切れる
+ */
+export function neighbors(id: RegionId, shape: WorldShape = 'globe'): RegionId[] {
   const { col, row } = parseRegionId(id)
-  const out: RegionId[] = [
-    regionId((col + 1) % COLS, row),
-    regionId((col + COLS - 1) % COLS, row),
-  ]
+  const out: RegionId[] = []
+  if (shape === 'globe') {
+    out.push(regionId((col + 1) % COLS, row), regionId((col + COLS - 1) % COLS, row))
+  } else {
+    if (col < COLS - 1) out.push(regionId(col + 1, row))
+    if (col > 0) out.push(regionId(col - 1, row))
+  }
   if (row > 0) out.push(regionId(col, row - 1))
   if (row < ROWS - 1) out.push(regionId(col, row + 1))
   return out

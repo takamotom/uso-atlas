@@ -1,8 +1,10 @@
 import { confirmedCount } from '../game/state'
 import type { GameState } from '../game/state'
 import { ALL_REGIONS } from '../map/regions'
+import type { WorldShape } from '../map/regions'
 import type { LieIntensity } from '../report/config'
 import { CaptainSelect } from './CaptainSelect'
+import { WorldSelect } from './WorldSelect'
 
 interface Props {
   state: GameState
@@ -14,6 +16,7 @@ interface Props {
   onExport: () => void
   onReset: () => void
   onIntensityChange: (intensity: LieIntensity) => void
+  onWorldShapeChange: (shape: WorldShape) => void
 }
 
 export function Hud({
@@ -26,6 +29,7 @@ export function Hud({
   onExport,
   onReset,
   onIntensityChange,
+  onWorldShapeChange,
 }: Props) {
   const count = confirmedCount(state)
   const complete = state.phase.type === 'complete'
@@ -42,6 +46,7 @@ export function Hud({
         {complete && '世界地図、完成！'}
       </p>
       <CaptainSelect value={state.intensity} onChange={onIntensityChange} />
+      <WorldSelect value={state.worldShape} onChange={onWorldShapeChange} />
       <div className="hud-buttons">
         <button
           type="button"

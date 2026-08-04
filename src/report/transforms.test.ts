@@ -4,6 +4,7 @@ import { INTENSITY_PRESETS } from './config'
 import { createRng } from './random'
 import {
   anchorCandidates,
+  carveLakes,
   distortRings,
   fabricateIslands,
   fabricateMegaContinent,
@@ -234,6 +235,40 @@ describe('sinkRingToBorderStrips', () => {
 
   test('内陸の島が、沈没したとき、何も残らないべき', () => {
     expect(sinkRingToBorderStrips(interiorIsland, bbox, margin)).toEqual([])
+  })
+})
+
+describe('carveLakes', () => {
+  /** セル全体を覆う陸（内陸セルの真実、反時計回り） */
+  const fullLand: Ring = [
+    [0, 0],
+    [30, 0],
+    [30, 30],
+    [0, 30],
+  ]
+
+  test('湖が、穿たれたとき、陸と逆巻きのリングとして追加されるべき', () => {
+    const out = carveLakes([fullLand], bbox, createRng('lake-1'), preset)
+    expect(out.length).toBeGreaterThan(1)
+    const landSign = Math.sign(ringArea(fullLand))
+    for (const lake of out.slice(1)) {
+      expect(Math.sign(ringArea(lake))).toBe(-landSign)
+    }
+  })
+
+  test('湖の全頂点が、セル境界からmargin以上離れているべき', () => {
+    for (let trial = 0; trial < 15; trial++) {
+      const out = carveLakes([fullLand], bbox, createRng(`lake-m-${trial}`), preset)
+      for (const lake of out.slice(1)) {
+        for (const p of lake) {
+          expect(distToRectBorder(p, bbox)).toBeGreaterThanOrEqual(margin - 1e-9)
+        }
+      }
+    }
+  })
+
+  test('陸地がないとき、湖変換を適用しても、何も追加しないべき', () => {
+    expect(carveLakes([], bbox, createRng('lake-empty'), preset)).toEqual([])
   })
 })
 

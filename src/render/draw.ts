@@ -7,6 +7,7 @@ import { canDispatch, isConfirmed } from '../game/state'
 import type { GameState } from '../game/state'
 import { truthGeometry } from '../map/world-data'
 import { createNoise2D } from '../report/noise'
+import { createRng } from '../report/random'
 import { PALETTE } from './parchment'
 import type { ViewTransform } from './transform'
 
@@ -62,6 +63,49 @@ export function fogCellPath(id: RegionId, vt: ViewTransform): Path2D {
   })
   path.closePath()
   return path
+}
+
+/**
+ * 平面世界の東西の果て: 海水が世界の縁から流れ落ちる滝。
+ * 世界端（経度±180）のピクセル位置に泡と落水の筋を描く
+ */
+export function drawWorldEdgeFalls(ctx: CanvasRenderingContext2D, vt: ViewTransform): void {
+  const stripW = Math.max(14, vt.scale * 5)
+  const edges = [vt.toPx([-180, 0])[0], vt.toPx([180, 0])[0]]
+  for (const edgeX of edges) {
+    const inward = edgeX < vt.width / 2 ? 1 : -1
+    if (edgeX + inward * stripW < -stripW || edgeX - inward * stripW > vt.width + stripW) continue
+    ctx.save()
+    // 縁に向かって白く泡立つグラデーション
+    const grad = ctx.createLinearGradient(edgeX + inward * stripW, 0, edgeX, 0)
+    grad.addColorStop(0, 'rgba(250, 248, 240, 0)')
+    grad.addColorStop(0.6, 'rgba(250, 248, 240, 0.5)')
+    grad.addColorStop(1, 'rgba(255, 253, 246, 0.95)')
+    ctx.fillStyle = grad
+    ctx.fillRect(Math.min(edgeX, edgeX + inward * stripW), 0, stripW, vt.height)
+    // 落水の筋
+    const rng = createRng(`falls:${inward}`)
+    ctx.strokeStyle = 'rgba(160, 190, 200, 0.55)'
+    ctx.lineWidth = 1.6
+    const count = Math.floor(vt.height / 4)
+    for (let i = 0; i < count; i++) {
+      const y = rng() * vt.height
+      const len = 6 + rng() * 20
+      const x = edgeX + inward * rng() * stripW * 0.85
+      ctx.beginPath()
+      ctx.moveTo(x, y)
+      ctx.lineTo(x, y + len)
+      ctx.stroke()
+    }
+    // 世界の果ての縁線
+    ctx.strokeStyle = 'rgba(91, 74, 47, 0.7)'
+    ctx.lineWidth = 2.5
+    ctx.beginPath()
+    ctx.moveTo(edgeX, 0)
+    ctx.lineTo(edgeX, vt.height)
+    ctx.stroke()
+    ctx.restore()
+  }
 }
 
 /** 実際の地球の海岸線を青破線で重ねる（完成後の答え合わせ用） */
@@ -134,6 +178,8 @@ export function drawScene(ctx: CanvasRenderingContext2D, o: SceneOptions): void 
     ctx.stroke(path)
     ctx.restore()
   }
+
+  if (state.worldShape === 'flat') drawWorldEdgeFalls(ctx, vt)
 
   if (o.shipPos) {
     const [px, py] = vt.toPx(o.shipPos)

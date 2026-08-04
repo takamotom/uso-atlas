@@ -1,18 +1,19 @@
 // セーブ＝シード+履歴方式。ジオメトリは保存せず、attempts/confirmedAttemptのみ保存する。
 // SAVE_VERSION は報告生成アルゴリズムやチューニング定数（report/config.ts）、
 // 地図データ（world-regions.json）を変更したら必ず上げること。不一致のセーブは破棄される。
-import { ALL_REGIONS } from '../map/regions'
+import { ALL_REGIONS, isWorldShape } from '../map/regions'
 import type { RegionId } from '../map/regions'
 import { isLieIntensity } from '../report/config'
 import { initialState, isComplete } from './state'
 import type { GameState, RegionProgress } from './state'
 
-export const SAVE_VERSION = 4
+export const SAVE_VERSION = 5
 export const STORAGE_KEY = 'uso-atlas:save'
 
 interface SaveData {
   version: number
   intensity: string
+  shape: string
   regions: Record<string, [number, number | null]>
 }
 
@@ -21,7 +22,7 @@ export function serialize(state: GameState): string {
   for (const [id, p] of Object.entries(state.regions)) {
     if (p) regions[id] = [p.attempts, p.confirmedAttempt]
   }
-  return JSON.stringify({ version: SAVE_VERSION, intensity: state.intensity, regions })
+  return JSON.stringify({ version: SAVE_VERSION, intensity: state.intensity, shape: state.worldShape, regions })
 }
 
 /** セーブJSONを解釈する。壊れたJSON・バージョン不一致・型不正は null（＝破棄）を返す */
@@ -32,6 +33,7 @@ export function parseSave(json: string): GameState | null {
     const save = data as Partial<SaveData>
     if (save.version !== SAVE_VERSION) return null
     if (!isLieIntensity(save.intensity)) return null
+    if (!isWorldShape(save.shape)) return null
     if (typeof save.regions !== 'object' || save.regions === null) return null
 
     const regions: Partial<Record<RegionId, RegionProgress>> = {}
@@ -44,7 +46,12 @@ export function parseSave(json: string): GameState | null {
       regions[id as RegionId] = { attempts, confirmedAttempt }
     }
     // 航海・報告確認の途中でセーブされていてもidleに戻す（再派遣すれば同じ報告が出る）
-    const state: GameState = { regions, phase: { type: 'idle' }, intensity: save.intensity }
+    const state: GameState = {
+      regions,
+      phase: { type: 'idle' },
+      intensity: save.intensity,
+      worldShape: save.shape,
+    }
     return isComplete(state) ? { ...state, phase: { type: 'complete' } } : state
   } catch {
     return null

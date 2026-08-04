@@ -25,6 +25,17 @@ describe('neighbors', () => {
     expect(neighbors('r11-2')).toContain('r0-2')
   })
 
+  test('平面世界で東端の列の海域が、隣接を求めたとき、西端の列と隣接しないべき', () => {
+    const n = neighbors('r11-2', 'flat')
+    expect(n).not.toContain('r0-2')
+    expect(n).toEqual(expect.arrayContaining(['r10-2', 'r11-1', 'r11-3']))
+    expect(n).toHaveLength(3)
+  })
+
+  test('平面世界で中央の海域が、隣接を求めたとき、球体と同じ4近傍になるべき', () => {
+    expect(neighbors('r5-2', 'flat').sort()).toEqual(neighbors('r5-2', 'globe').sort())
+  })
+
   test('北端の行の海域が、隣接を求めたとき、さらに北の海域を含まないべき', () => {
     const n = neighbors('r3-0')
     expect(n).toHaveLength(3)

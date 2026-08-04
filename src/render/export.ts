@@ -3,7 +3,7 @@ import { ALL_REGIONS } from '../map/regions'
 import { confirmedGeometry } from '../game/confirmed-geometry'
 import { isConfirmed } from '../game/state'
 import type { GameState } from '../game/state'
-import { drawCompassRose, drawLand, fogCellPath } from './draw'
+import { drawCompassRose, drawLand, drawWorldEdgeFalls, fogCellPath } from './draw'
 import { PALETTE, drawParchmentSea } from './parchment'
 import { createViewTransform } from './transform'
 
@@ -30,6 +30,7 @@ export function renderExportCanvas(state: GameState): HTMLCanvasElement {
     ctx.fill(fogCellPath(id, vt))
     ctx.restore()
   }
+  if (state.worldShape === 'flat') drawWorldEdgeFalls(ctx, vt)
 
   // カルトゥーシュ（題字枠）
   const cw = vt.width * 0.24
