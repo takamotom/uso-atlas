@@ -119,4 +119,16 @@ describe('RESET', () => {
     const s = reducer(stateInReview(adjacentToStart), { type: 'RESET' })
     expect(s).toEqual(initialState())
   })
+
+  test('レベル指定つきでリセットしたとき、新しいレベルの初期状態になるべき', () => {
+    const s = reducer(initialState(), { type: 'RESET', intensity: 'wild' })
+    expect(s).toEqual(initialState('wild'))
+    expect(s.intensity).toBe('wild')
+  })
+
+  test('レベル指定なしでリセットしたとき、現在のレベルが維持されるべき', () => {
+    const wildState = initialState('wild')
+    const s = reducer(wildState, { type: 'RESET' })
+    expect(s.intensity).toBe('wild')
+  })
 })

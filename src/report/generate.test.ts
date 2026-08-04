@@ -2,16 +2,29 @@ import { distToRectBorder, distToRingOutline } from '../map/geo'
 import type { Point, Ring } from '../map/geo'
 import { ALL_REGIONS, START_REGION, regionBBox } from '../map/regions'
 import { truthGeometry } from '../map/world-data'
+import { INTENSITY_PRESETS } from './config'
+import type { LieIntensity } from './config'
 import { FORCED_TRUTH_ATTEMPT, generateReport } from './generate'
 import { marginOf } from './transforms'
 
+const INTENSITIES: LieIntensity[] = ['mild', 'standard', 'wild']
+
 describe('generateReport', () => {
-  test('同じ海域と試行回数で生成した報告が、2回生成しても同一のジオメトリになるべき', () => {
-    for (const attempt of [0, 1, 5]) {
-      const a = generateReport('r6-1', attempt)
-      const b = generateReport('r6-1', attempt)
-      expect(a).toEqual(b)
+  test('同じ海域・試行回数・レベルで生成した報告が、2回生成しても同一のジオメトリになるべき', () => {
+    for (const intensity of INTENSITIES) {
+      for (const attempt of [0, 5]) {
+        const a = generateReport('r6-1', attempt, intensity)
+        const b = generateReport('r6-1', attempt, intensity)
+        expect(a).toEqual(b)
+      }
     }
+  })
+
+  test('異なるレベルで生成した報告が、同じ海域と試行回数でも、異なる乱数列から生成されるべき', () => {
+    const results = INTENSITIES.map((i) =>
+      JSON.stringify(Array.from({ length: 5 }, (_, a) => generateReport('r6-1', a, i).kind)),
+    )
+    expect(new Set(results).size).toBeGreaterThan(1)
   })
 
   test('強制真実attemptで生成したとき、真実のジオメトリそのものが返るべき', () => {
@@ -41,28 +54,32 @@ describe('generateReport', () => {
 })
 
 describe('境界不変条件（プロパティテスト）', () => {
-  test('全海域×8試行の嘘報告で、境界帯内の頂点が真実の輪郭線上にあり、全頂点がbbox内にあるべき', () => {
-    for (const id of ALL_REGIONS) {
-      const bbox = regionBBox(id)
-      const margin = marginOf(bbox)
-      const truth = truthGeometry(id)
-      for (let attempt = 0; attempt < 8; attempt++) {
-        const report = generateReport(id, attempt)
-        if (report.kind !== 'lie') continue
-        for (const ring of report.geometry) {
-          for (const p of ring) {
-            expect(p[0]).toBeGreaterThanOrEqual(bbox.x0 - 1e-9)
-            expect(p[0]).toBeLessThanOrEqual(bbox.x1 + 1e-9)
-            expect(p[1]).toBeGreaterThanOrEqual(bbox.y0 - 1e-9)
-            expect(p[1]).toBeLessThanOrEqual(bbox.y1 + 1e-9)
-            if (distToRectBorder(p, bbox) <= margin / 2) {
-              expect(minDistToOutlines(p, truth)).toBeLessThan(1e-6)
+  test.each(INTENSITIES)(
+    'レベル%sの全海域×6試行の嘘報告で、境界帯内の頂点が真実の輪郭線上にあり、全頂点がbbox内にあるべき',
+    (intensity) => {
+      const preset = INTENSITY_PRESETS[intensity]
+      for (const id of ALL_REGIONS) {
+        const bbox = regionBBox(id)
+        const margin = marginOf(bbox, preset)
+        const truth = truthGeometry(id)
+        for (let attempt = 0; attempt < 6; attempt++) {
+          const report = generateReport(id, attempt, intensity)
+          if (report.kind !== 'lie') continue
+          for (const ring of report.geometry) {
+            for (const p of ring) {
+              expect(p[0]).toBeGreaterThanOrEqual(bbox.x0 - 1e-9)
+              expect(p[0]).toBeLessThanOrEqual(bbox.x1 + 1e-9)
+              expect(p[1]).toBeGreaterThanOrEqual(bbox.y0 - 1e-9)
+              expect(p[1]).toBeLessThanOrEqual(bbox.y1 + 1e-9)
+              if (distToRectBorder(p, bbox) <= margin / 2) {
+                expect(minDistToOutlines(p, truth)).toBeLessThan(1e-6)
+              }
             }
           }
         }
       }
-    }
-  })
+    },
+  )
 })
 
 function minDistToOutlines(p: Point, rings: Ring[]): number {

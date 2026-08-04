@@ -5,10 +5,14 @@ import { HOME_PORT, regionCenter } from '../map/regions'
 import type { RegionId } from '../map/regions'
 import type { Phase } from '../game/state'
 
-const SAIL_MS = 2200
-
 function easeInOut(t: number): number {
   return t * t * (3 - 2 * t)
+}
+
+/** 航海時間は距離に応じて伸びるが、遠くても冗長にならないよう上限を設ける */
+export function sailDurationMs(from: Point, to: Point): number {
+  const dist = Math.hypot(to[0] - from[0], to[1] - from[1])
+  return Math.min(1200, 400 + dist * 4)
 }
 
 export function useShipAnimation(phase: Phase, onArrived: () => void): Point | null {
@@ -24,11 +28,12 @@ export function useShipAnimation(phase: Phase, onArrived: () => void): Point | n
   useEffect(() => {
     if (!target) return
     const dest = regionCenter(target)
+    const duration = sailDurationMs(HOME_PORT, dest)
     const start = performance.now()
     let raf = 0
     let arrived = false
     const tick = (now: number) => {
-      const t = Math.min(1, (now - start) / SAIL_MS)
+      const t = Math.min(1, (now - start) / duration)
       const e = easeInOut(t)
       setEntry({
         target,

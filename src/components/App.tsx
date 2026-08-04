@@ -20,8 +20,8 @@ export default function App() {
   const preview = useMemo(() => {
     if (state.phase.type !== 'reviewing') return null
     const { target, attempt } = state.phase
-    return { region: target, geometry: generateReport(target, attempt).geometry }
-  }, [state.phase])
+    return { region: target, geometry: generateReport(target, attempt, state.intensity).geometry }
+  }, [state.phase, state.intensity])
 
   // 開発用ギャラリー: URL末尾に #gallery を付けると報告のバリエーションを一覧できる
   if (window.location.hash === '#gallery') return <GalleryView />
@@ -32,6 +32,16 @@ export default function App() {
         state={state}
         onExport={() => exportMapPng(state)}
         onReset={() => dispatch({ type: 'RESET' })}
+        onIntensityChange={(intensity) => {
+          if (intensity === state.intensity) return
+          const started = Object.keys(state.regions).length > 1
+          if (
+            !started ||
+            window.confirm('ホラ吹きレベルを変えると、いまの地図を消して新しい航海が始まります。よろしいですか？')
+          ) {
+            dispatch({ type: 'RESET', intensity })
+          }
+        }}
       />
       <MapCanvas
         state={state}

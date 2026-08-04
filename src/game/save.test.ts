@@ -12,16 +12,32 @@ describe('serialize/deserialize', () => {
         'r4-1': { attempts: 1, confirmedAttempt: null },
       },
       phase: { type: 'idle' },
+      intensity: 'standard',
     }
     const restored = deserialize(serialize(state))
     expect(restored.regions).toEqual(state.regions)
     expect(restored.phase).toEqual({ type: 'idle' })
   })
 
+  test('大ボラレベルの状態が、シリアライズして復元したとき、レベルが保持されるべき', () => {
+    const state: GameState = {
+      regions: { [START_REGION]: { attempts: 0, confirmedAttempt: TRUTH_ATTEMPT } },
+      phase: { type: 'idle' },
+      intensity: 'wild',
+    }
+    expect(deserialize(serialize(state)).intensity).toBe('wild')
+  })
+
+  test('不正なレベルを含むセーブを読み込んだとき、初期状態を返すべき', () => {
+    const bad = JSON.stringify({ version: SAVE_VERSION, intensity: 'insane', regions: {} })
+    expect(deserialize(bad)).toEqual(initialState())
+  })
+
   test('報告確認の途中でセーブされた状態が、復元したとき、idleに戻るべき', () => {
     const state: GameState = {
       regions: { [START_REGION]: { attempts: 0, confirmedAttempt: TRUTH_ATTEMPT } },
       phase: { type: 'reviewing', target: 'r6-1', attempt: 0 },
+      intensity: 'standard',
     }
     expect(deserialize(serialize(state)).phase).toEqual({ type: 'idle' })
   })
@@ -32,6 +48,7 @@ describe('serialize/deserialize', () => {
         ALL_REGIONS.map((id) => [id, { attempts: 1, confirmedAttempt: 0 }]),
       ),
       phase: { type: 'idle' },
+      intensity: 'standard',
     }
     const restored = deserialize(serialize(state))
     expect(isComplete(restored)).toBe(true)
@@ -45,12 +62,16 @@ describe('serialize/deserialize', () => {
   })
 
   test('バージョンが異なるセーブを読み込んだとき、初期状態を返すべき', () => {
-    const old = JSON.stringify({ version: SAVE_VERSION + 1, regions: {} })
+    const old = JSON.stringify({ version: SAVE_VERSION + 1, intensity: 'standard', regions: {} })
     expect(deserialize(old)).toEqual(initialState())
   })
 
   test('存在しない海域IDを含むセーブを読み込んだとき、初期状態を返すべき', () => {
-    const bad = JSON.stringify({ version: SAVE_VERSION, regions: { 'r99-99': [1, 0] } })
+    const bad = JSON.stringify({
+      version: SAVE_VERSION,
+      intensity: 'standard',
+      regions: { 'r99-99': [1, 0] },
+    })
     expect(deserialize(bad)).toEqual(initialState())
   })
 })

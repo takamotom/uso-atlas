@@ -15,7 +15,11 @@ export function CompleteScreen({ state, onExport, onReset, onClose }: Props) {
     () =>
       ALL_REGIONS.filter((id) => {
         const attempt = state.regions[id]?.confirmedAttempt
-        return attempt != null && attempt >= 0 && generateReport(id, attempt).kind === 'lie'
+        return (
+          attempt != null &&
+          attempt >= 0 &&
+          generateReport(id, attempt, state.intensity).kind === 'lie'
+        )
       }).length,
     [state],
   )

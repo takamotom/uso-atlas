@@ -1,14 +1,17 @@
 import { confirmedCount } from '../game/state'
 import type { GameState } from '../game/state'
 import { ALL_REGIONS } from '../map/regions'
+import { INTENSITY_LABELS } from '../report/config'
+import type { LieIntensity } from '../report/config'
 
 interface Props {
   state: GameState
   onExport: () => void
   onReset: () => void
+  onIntensityChange: (intensity: LieIntensity) => void
 }
 
-export function Hud({ state, onExport, onReset }: Props) {
+export function Hud({ state, onExport, onReset, onIntensityChange }: Props) {
   const count = confirmedCount(state)
   return (
     <header className="hud">
@@ -22,6 +25,19 @@ export function Hud({ state, onExport, onReset }: Props) {
         {state.phase.type === 'reviewing' && '船長の報告を信じますか？'}
         {state.phase.type === 'complete' && '世界地図、完成！'}
       </p>
+      <label className="hud-intensity">
+        ホラ吹きレベル:
+        <select
+          value={state.intensity}
+          onChange={(e) => onIntensityChange(e.target.value as LieIntensity)}
+        >
+          {(Object.entries(INTENSITY_LABELS) as [LieIntensity, string][]).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </label>
       <div className="hud-buttons">
         <button type="button" onClick={onExport}>
           地図を保存

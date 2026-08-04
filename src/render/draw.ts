@@ -79,7 +79,8 @@ export function drawScene(ctx: CanvasRenderingContext2D, o: SceneOptions): void 
 
   for (const id of ALL_REGIONS) {
     const p = state.regions[id]
-    if (p?.confirmedAttempt != null) drawLand(ctx, confirmedGeometry(id, p.confirmedAttempt), vt)
+    if (p?.confirmedAttempt != null)
+      drawLand(ctx, confirmedGeometry(id, p.confirmedAttempt, state.intensity), vt)
   }
 
   // 霧（プレビュー対象セルは霧を剥がして見せる）

@@ -1,5 +1,6 @@
 // 探索フローの純関数reducer。不正な遷移は状態をそのまま返す。
 import type { RegionId } from '../map/regions'
+import type { LieIntensity } from '../report/config'
 import { canDispatch, initialState, isComplete } from './state'
 import type { GameState, RegionProgress } from './state'
 
@@ -8,7 +9,7 @@ export type Action =
   | { type: 'ARRIVED' }
   | { type: 'BELIEVE' }
   | { type: 'REJECT' }
-  | { type: 'RESET' }
+  | { type: 'RESET'; intensity?: LieIntensity }
 
 function progressOf(state: GameState, id: RegionId): RegionProgress {
   return state.regions[id] ?? { attempts: 0, confirmedAttempt: null }
@@ -31,6 +32,7 @@ export function reducer(state: GameState, action: Action): GameState {
       const { target, attempt } = state.phase
       const prev = progressOf(state, target)
       const next: GameState = {
+        ...state,
         regions: {
           ...state.regions,
           [target]: { attempts: prev.attempts, confirmedAttempt: attempt },
@@ -43,6 +45,7 @@ export function reducer(state: GameState, action: Action): GameState {
       if (state.phase.type !== 'reviewing') return state
       const { target, attempt } = state.phase
       return {
+        ...state,
         regions: {
           ...state.regions,
           [target]: { attempts: attempt + 1, confirmedAttempt: null },
@@ -51,6 +54,6 @@ export function reducer(state: GameState, action: Action): GameState {
       }
     }
     case 'RESET':
-      return initialState()
+      return initialState(action.intensity ?? state.intensity)
   }
 }

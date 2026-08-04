@@ -2,14 +2,22 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ALL_REGIONS, regionBBox } from '../map/regions'
 import type { RegionId } from '../map/regions'
+import { INTENSITY_LABELS } from '../report/config'
+import type { LieIntensity } from '../report/config'
 import { generateReport } from '../report/generate'
 import { PALETTE } from '../render/parchment'
 
 const CELL_PX = 220
 
-function ReportThumb({ id, attempt }: { id: RegionId; attempt: number }) {
+interface ThumbProps {
+  id: RegionId
+  attempt: number
+  intensity: LieIntensity
+}
+
+function ReportThumb({ id, attempt, intensity }: ThumbProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const report = useMemo(() => generateReport(id, attempt), [id, attempt])
+  const report = useMemo(() => generateReport(id, attempt, intensity), [id, attempt, intensity])
 
   useEffect(() => {
     const r = report
@@ -49,6 +57,7 @@ function ReportThumb({ id, attempt }: { id: RegionId; attempt: number }) {
 
 export function GalleryView() {
   const [region, setRegion] = useState<RegionId>('r5-1')
+  const [intensity, setIntensity] = useState<LieIntensity>('standard')
   return (
     <div className="gallery">
       <h1>報告ギャラリー（開発用）</h1>
@@ -62,9 +71,24 @@ export function GalleryView() {
           ))}
         </select>
       </label>
+      <label>
+        ホラ吹きレベル:
+        <select value={intensity} onChange={(e) => setIntensity(e.target.value as LieIntensity)}>
+          {(Object.entries(INTENSITY_LABELS) as [LieIntensity, string][]).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </label>
       <div className="gallery-grid">
         {Array.from({ length: 12 }, (_, attempt) => (
-          <ReportThumb key={`${region}-${attempt}`} id={region} attempt={attempt} />
+          <ReportThumb
+            key={`${region}-${intensity}-${attempt}`}
+            id={region}
+            attempt={attempt}
+            intensity={intensity}
+          />
         ))}
       </div>
     </div>

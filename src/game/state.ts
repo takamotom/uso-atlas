@@ -1,6 +1,8 @@
 // ゲーム状態の型定義とセレクタ。DOM非依存。
 import { ALL_REGIONS, START_REGION, neighbors } from '../map/regions'
 import type { RegionId } from '../map/regions'
+import { DEFAULT_INTENSITY } from '../report/config'
+import type { LieIntensity } from '../report/config'
 
 /** confirmedAttempt がこの値の海域は「強制的に真実」（開始海域用） */
 export const TRUTH_ATTEMPT = -1
@@ -21,12 +23,15 @@ export type Phase =
 export interface GameState {
   regions: Partial<Record<RegionId, RegionProgress>>
   phase: Phase
+  /** ホラ吹きレベル。確定地形の再現に関わるため航海の途中では変更できない */
+  intensity: LieIntensity
 }
 
-export function initialState(): GameState {
+export function initialState(intensity: LieIntensity = DEFAULT_INTENSITY): GameState {
   return {
     regions: { [START_REGION]: { attempts: 0, confirmedAttempt: TRUTH_ATTEMPT } },
     phase: { type: 'idle' },
+    intensity,
   }
 }
 

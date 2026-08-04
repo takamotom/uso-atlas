@@ -19,7 +19,8 @@ export function renderExportCanvas(state: GameState): HTMLCanvasElement {
   drawParchmentSea(ctx, vt.width, vt.height)
   for (const id of ALL_REGIONS) {
     const p = state.regions[id]
-    if (p?.confirmedAttempt != null) drawLand(ctx, confirmedGeometry(id, p.confirmedAttempt), vt)
+    if (p?.confirmedAttempt != null)
+      drawLand(ctx, confirmedGeometry(id, p.confirmedAttempt, state.intensity), vt)
   }
   for (const id of ALL_REGIONS) {
     if (isConfirmed(state, id)) continue
